@@ -1,34 +1,3 @@
-# Environment variables
 .env
-.env.local
-.env.*.local
-
-# Python virtual environment
-venv/
-env/
-ENV/
-*.venv
-
-# Python cache
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-
-# Go build artifacts
-/go-call_services/cmd/main
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Temporary files
-temp_audio/
-*.log
+.venv/
