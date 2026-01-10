@@ -1,8 +1,11 @@
 package handler
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"twilio-ai-agent-go/agent"
 	"twilio-ai-agent-go/database"
 
@@ -10,7 +13,9 @@ import (
 	"github.com/twilio/twilio-go/twiml"
 )
 
-func endCall(message string, context *gin.Context) {
+// --- Helpers de TwiML ---
+
+func EndCall(message string, context *gin.Context) {
 	twimlResult, err := twiml.Voice([]twiml.Element{
 		&twiml.VoiceSay{
 			Message:  message,
@@ -21,16 +26,16 @@ func endCall(message string, context *gin.Context) {
 	})
 	if err != nil {
 		context.String(http.StatusInternalServerError, err.Error())
-	} else {
-		context.Header("Content-Type", "text/xml")
-		context.String(http.StatusOK, twimlResult)
+		return
 	}
+	context.Header("Content-Type", "text/xml")
+	context.String(http.StatusOK, twimlResult)
 }
 
-func gatherCall(message string, context *gin.Context) {
+func GatherCall(message string, context *gin.Context) {
 	twimlResult, err := twiml.Voice([]twiml.Element{
 		&twiml.VoiceGather{
-			Action:          "https://germproof-jason-noncontrastive.ngrok-free.dev/gather",
+			Action:          os.Getenv("GATHER_ENDPOINT"),
 			Language:        "es-ES",
 			Input:           "speech",
 			Enhanced:        "true",
@@ -49,11 +54,67 @@ func gatherCall(message string, context *gin.Context) {
 	})
 	if err != nil {
 		context.String(http.StatusInternalServerError, err.Error())
-	} else {
-		context.Header("Content-Type", "text/xml")
-		context.String(http.StatusOK, twimlResult)
+		return
 	}
+	context.Header("Content-Type", "text/xml")
+	context.String(http.StatusOK, twimlResult)
 }
+
+// --- Manejadores de Acciones ---
+
+func handleTalk(context *gin.Context, data json.RawMessage) {
+	var talkData agent.TalkData
+	if err := json.Unmarshal(data, &talkData); err != nil {
+		log.Println("Error unmarshaling TALK data:", err)
+		EndCall("Lo siento, tuvimos un error interno, por favor intentalo más tarde.", context)
+		return
+	}
+	GatherCall(talkData.Message, context)
+}
+
+func handleEndCall(context *gin.Context, callSid string, data json.RawMessage) {
+	log.Printf("(%s): Finished call.\n", callSid)
+	var talkData agent.TalkData
+	if err := json.Unmarshal(data, &talkData); err != nil {
+		log.Println("Error unmarshaling END_CALL data:", err)
+		EndCall("Lo siento, tuvimos un error interno, por favor intentalo más tarde.", context)
+		return
+	}
+	EndCall(talkData.Message, context)
+	agent.EndSession(callSid)
+}
+
+func handleCreateAppointment(context *gin.Context, callSid string, fromNumber string, data json.RawMessage) {
+	var appointmentData agent.CreateAppointmentData
+	if err := json.Unmarshal(data, &appointmentData); err != nil {
+		log.Println("Error unmarshaling appointment data:", err)
+		EndCall("Lo siento, tuvimos un error interno, por favor intentalo más tarde.", context)
+		return
+	}
+
+	// 1. Guardar en DB
+	err := database.CreateAppointment(&appointmentData, fromNumber)
+
+	// 2. Notificar al Agente sobre el resultado (Context)
+	contextResponse, err := agent.Context(callSid, strconv.FormatBool(err == nil))
+	if err != nil {
+		log.Println("Error context response:", err)
+		EndCall("Lo siento, tuvimos un error interno, por favor intentalo más tarde.", context)
+		return
+	}
+
+	// 3. Responder al usuario con el mensaje que el agente decida
+	var talkData agent.TalkData
+	if err = json.Unmarshal(contextResponse.Data, &talkData); err != nil {
+		log.Println("Error unmarshaling context response data:", err)
+		EndCall("Lo siento, tuvimos un error interno, por favor intentalo más tarde.", context)
+		return
+	}
+
+	GatherCall(talkData.Message, context)
+}
+
+// --- Handler Principal ---
 
 func GatherHandler(context *gin.Context) {
 	// fromNumber := context.PostForm("From")
@@ -63,32 +124,24 @@ func GatherHandler(context *gin.Context) {
 
 	log.Printf("(%s): %s\n", callSid, speech)
 
-	actionResponse, err := agent.Query(callSid, speech)
+	response, err := agent.Send(callSid, speech)
 	if err != nil {
-		log.Println(err)
-
-		endCall("Lo siento, tuvimos un error interno, por favor intentalo más tarde.", context)
+		log.Println("Agent Send Error:", err)
+		EndCall("Lo siento, tuvimos un error interno, por favor intentalo más tarde.", context)
 		return
 	}
 
-	log.Println(actionResponse.Action, actionResponse.Message)
+	log.Printf("Action: %s", response.Action)
 
-	switch actionResponse.Action {
+	switch response.Action {
+	case "TALK":
+		handleTalk(context, response.Data)
 	case "END_CALL":
-		endCall(actionResponse.Message, context)
-		agent.End(callSid)
-		log.Printf("(%s): Finished call.\n", callSid)
-		return
+		handleEndCall(context, callSid, response.Data)
 	case "CREATE_APPOINTMENT":
-		appointmentData := actionResponse.Data
-
-		err := database.CreateAppointment(&appointmentData, fromNumber)
-		if err != nil {
-			log.Println("Error appointment:", err)
-			endCall("No pude agendar tu cita debido a un error interno, por favor intente más tarde.", context)
-			return
-		}
+		handleCreateAppointment(context, callSid, fromNumber, response.Data)
+	default:
+		log.Printf("Unknown action: %s", response.Action)
+		EndCall("Acción no reconocida", context)
 	}
-
-	gatherCall(actionResponse.Message, context)
 }

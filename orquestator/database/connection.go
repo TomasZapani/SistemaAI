@@ -47,7 +47,7 @@ func GetOrCreateUser(name string, phone_number string) (int64, error) {
 	return id, err
 }
 
-func CreateAppointment(data *agent.AppointmentData, phoneNumber string) error {
+func CreateAppointment(data *agent.CreateAppointmentData, phoneNumber string) error {
 	uID, err := GetOrCreateUser(data.Name, phoneNumber)
 	if err != nil {
 		return fmt.Errorf("Error on user: %v", err)

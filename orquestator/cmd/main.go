@@ -27,6 +27,7 @@ func main() {
 
 	r.POST("/answer", handler.AnswerHandler)
 	r.POST("/gather", handler.GatherHandler)
+	r.POST("/error", handler.ErrorHandler)
 
 	if err := r.Run("127.0.0.1:8080"); err != nil {
 		log.Fatalf("failed to run server: %v", err)
