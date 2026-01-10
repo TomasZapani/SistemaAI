@@ -1,37 +1,33 @@
 package handler
 
 import (
-	"net/http"
+	"encoding/json"
+	"log"
+	"twilio-ai-agent-go/agent"
 
 	"github.com/gin-gonic/gin"
-	"github.com/twilio/twilio-go/twiml"
 )
 
 func AnswerHandler(context *gin.Context) {
-	twimlResult, err := twiml.Voice([]twiml.Element{
-		&twiml.VoiceGather{
-			Action:          "https://germproof-jason-noncontrastive.ngrok-free.dev/gather",
-			Language:        "es-ES",
-			Input:           "speech",
-			Enhanced:        "true",
-			SpeechTimeout:   "auto",
-			ProfanityFilter: "false",
-			BargeIn:         "false",
-			SpeechModel:     "experimental_conversations",
-			InnerElements: []twiml.Element{
-				&twiml.VoiceSay{
-					Message:  "Hola, bienvenido al asistente de voz, por favor dime tu consulta.",
-					Voice:    "Polly.Lupe-Generative",
-					Language: "es-US",
-				},
-			},
-		},
-	})
+	callSid := context.PostForm("CallSid")
 
+	response, err := agent.StartSession(callSid)
 	if err != nil {
-		context.String(http.StatusInternalServerError, err.Error())
-	} else {
-		context.Header("Content-Type", "text/xml")
-		context.String(http.StatusOK, twimlResult)
+		log.Println("Answer error:", err)
+		return
 	}
+
+	if response.Action != "TALK" {
+		log.Printf("Agent error: Triying to start the conversation with action (%s)\n", response.Action)
+		return
+	}
+
+	var talkData agent.TalkData
+
+	if err = json.Unmarshal(response.Data, &talkData); err != nil {
+		log.Println("Error unmarshaling response:", err)
+		return
+	}
+
+	GatherCall(talkData.Message, context)
 }
