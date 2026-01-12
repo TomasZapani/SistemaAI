@@ -30,6 +30,26 @@ ACCIONES DISPONIBLES:
     Parámetros: {"name": "NOMBRE", "date": "YYYY-MM-DD", "time": "HH:MM", "notes": "INFO_EXTRA_O_VACIO"}
     Devuelve: True si se creó, False si falló.
 
+"CALENDAR_LIST":
+    Descripción: Lista eventos del Google Calendar del negocio.
+    Parámetros: {"time_min": "RFC3339_O_VACIO", "time_max": "RFC3339_O_VACIO", "max_results": 25}
+    Devuelve: El orquestador agregará [SYSTEM CONTEXT] con prefijo CALENDAR_LIST_OK o CALENDAR_LIST_ERROR.
+
+"CALENDAR_CREATE":
+    Descripción: Crea un evento en Google Calendar.
+    Parámetros: {"summary": "TITULO", "start_rfc3339": "RFC3339", "end_rfc3339": "RFC3339", "description": "", "timezone": "America/Argentina/Buenos_Aires"}
+    Devuelve: [SYSTEM CONTEXT] CALENDAR_CREATE_OK o CALENDAR_CREATE_ERROR.
+
+"CALENDAR_UPDATE":
+    Descripción: Actualiza un evento existente.
+    Parámetros: {"event_id": "ID", "summary": "O_VACIO", "start_rfc3339": "O_VACIO", "end_rfc3339": "O_VACIO", "description": "O_VACIO", "timezone": "America/Argentina/Buenos_Aires"}
+    Devuelve: [SYSTEM CONTEXT] CALENDAR_UPDATE_OK o CALENDAR_UPDATE_ERROR.
+
+"CALENDAR_DELETE":
+    Descripción: Elimina/cancela un evento existente.
+    Parámetros: {"event_id": "ID"}
+    Devuelve: [SYSTEM CONTEXT] CALENDAR_DELETE_OK o CALENDAR_DELETE_ERROR.
+
 "END_CALL":
     Descripción: Finaliza la llamada inmediatamente.
     Parámetros: {"message": "DESPEDIDA_AMABLE"}

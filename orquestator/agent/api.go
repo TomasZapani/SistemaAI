@@ -1,8 +1,10 @@
 package agent
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -98,4 +100,46 @@ func EndSession(callSid string) error {
 	defer resp.Body.Close()
 
 	return nil
+}
+
+func calendarPost(path string, payload any) ([]byte, error) {
+	apiURL := os.Getenv("LLM_URL") + path
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.Post(apiURL, "application/json", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("Error calling calendar endpoint: %v", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("Calendar endpoint returned %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	return respBody, nil
+}
+
+func CalendarList(payload *CalendarListData) ([]byte, error) {
+	return calendarPost("/api/calendar/list", payload)
+}
+
+func CalendarCreate(payload *CalendarCreateData) ([]byte, error) {
+	return calendarPost("/api/calendar/create", payload)
+}
+
+func CalendarUpdate(payload *CalendarUpdateData) ([]byte, error) {
+	return calendarPost("/api/calendar/update", payload)
+}
+
+func CalendarDelete(payload *CalendarDeleteData) ([]byte, error) {
+	return calendarPost("/api/calendar/delete", payload)
 }
