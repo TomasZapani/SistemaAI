@@ -64,13 +64,12 @@ class CalendarClient:
         start_rfc3339: str,
         end_rfc3339: str,
         description: str = "",
-        timezone: str = "America/Argentina/Buenos_Aires",
     ):
         body = {
             "summary": summary,
             "description": description,
-            "start": {"dateTime": start_rfc3339, "timeZone": timezone},
-            "end": {"dateTime": end_rfc3339, "timeZone": timezone},
+            "start": {"dateTime": start_rfc3339, "timeZone": os.getenv("GOOGLE_CALENDAR_TIMEZONE")},
+            "end": {"dateTime": end_rfc3339, "timeZone": os.getenv("GOOGLE_CALENDAR_TIMEZONE")},
         }
         return self.service.events().insert(calendarId=self.calendar_id, body=body).execute()
 
@@ -80,8 +79,7 @@ class CalendarClient:
         summary: Optional[str] = None,
         start_rfc3339: Optional[str] = None,
         end_rfc3339: Optional[str] = None,
-        description: Optional[str] = None,
-        timezone: str = "America/Argentina/Buenos_Aires",
+        description: Optional[str] = None
     ):
         event = self.service.events().get(calendarId=self.calendar_id, eventId=event_id).execute()
 
@@ -90,9 +88,9 @@ class CalendarClient:
         if description is not None:
             event["description"] = description
         if start_rfc3339 is not None:
-            event["start"] = {"dateTime": start_rfc3339, "timeZone": timezone}
+            event["start"] = {"dateTime": start_rfc3339, "timeZone": os.getenv("GOOGLE_CALENDAR_TIMEZONE")}
         if end_rfc3339 is not None:
-            event["end"] = {"dateTime": end_rfc3339, "timeZone": timezone}
+            event["end"] = {"dateTime": end_rfc3339, "timeZone": os.getenv("GOOGLE_CALENDAR_TIMEZONE")}
 
         return self.service.events().update(calendarId=self.calendar_id, eventId=event_id, body=event).execute()
 
