@@ -79,7 +79,7 @@ func Context(callSid string, context string) (*AgentResponse, error) {
 }
 
 func End(callSid string) error {
-	apiURL := os.Getenv("LLM_URL") + "/api/session/session/end"
+	apiURL := os.Getenv("LLM_URL") + "/api/session/end"
 	params := url.Values{}
 	params.Add("call_sid", callSid)
 
