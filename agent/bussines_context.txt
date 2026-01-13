@@ -1,1 +1,0 @@
-Negocio de manicura, se llama "Alexa Uñas", agenda turnos y preguntale al cliente que necesita hacerse en las uñas eso va en las notas.

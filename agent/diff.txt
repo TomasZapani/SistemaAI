@@ -1,0 +1,461 @@
+diff --git a/agent/bussines_context.txt b/agent/bussines_context.txt
+deleted file mode 100644
+index 992678d..0000000
+--- a/agent/bussines_context.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-Negocio de manicura, se llama "Alexa Uñas", agenda turnos y preguntale al cliente que necesita hacerse en las uñas eso va en las notas.
+\ No newline at end of file
+diff --git a/agent/google_calendar.py b/agent/google_calendar.py
+deleted file mode 100644
+index ca15153..0000000
+--- a/agent/google_calendar.py
++++ /dev/null
+@@ -1,104 +0,0 @@
+-import json
+-import os
+-from dataclasses import dataclass
+-from datetime import datetime
+-from typing import Any, Optional
+-
+-from google.oauth2 import service_account
+-from googleapiclient.discovery import build
+-
+-
+-SCOPES = ["https://www.googleapis.com/auth/calendar"]
+-
+-
+-@dataclass
+-class CalendarClient:
+-    service: Any
+-    calendar_id: str
+-
+-    @staticmethod
+-    def from_env() -> "CalendarClient":
+-        calendar_id = os.getenv("GOOGLE_CALENDAR_ID")
+-        if not calendar_id:
+-            raise ValueError("Missing env var GOOGLE_CALENDAR_ID")
+-
+-        sa_path = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE")
+-        sa_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
+-
+-        if sa_path:
+-            creds = service_account.Credentials.from_service_account_file(sa_path, scopes=SCOPES)
+-        elif sa_json:
+-            creds = service_account.Credentials.from_service_account_info(json.loads(sa_json), scopes=SCOPES)
+-        else:
+-            raise ValueError(
+-                "Missing service account credentials. Set GOOGLE_SERVICE_ACCOUNT_FILE or GOOGLE_SERVICE_ACCOUNT_JSON"
+-            )
+-
+-        service = build("calendar", "v3", credentials=creds, cache_discovery=False)
+-        return CalendarClient(service=service, calendar_id=calendar_id)
+-
+-    def list_events(
+-        self,
+-        time_min: Optional[str] = None,
+-        time_max: Optional[str] = None,
+-        max_results: int = 25,
+-        single_events: bool = True,
+-        order_by: str = "startTime",
+-    ):
+-        return (
+-            self.service.events()
+-            .list(
+-                calendarId=self.calendar_id,
+-                timeMin=time_min,
+-                timeMax=time_max,
+-                maxResults=max_results,
+-                singleEvents=single_events,
+-                orderBy=order_by,
+-            )
+-            .execute()
+-        )
+-
+-    def create_event(
+-        self,
+-        summary: str,
+-        start_rfc3339: str,
+-        end_rfc3339: str,
+-        description: str = "",
+-    ):
+-        body = {
+-            "summary": summary,
+-            "description": description,
+-            "start": {"dateTime": start_rfc3339, "timeZone": os.getenv("GOOGLE_CALENDAR_TIMEZONE")},
+-            "end": {"dateTime": end_rfc3339, "timeZone": os.getenv("GOOGLE_CALENDAR_TIMEZONE")},
+-        }
+-        return self.service.events().insert(calendarId=self.calendar_id, body=body).execute()
+-
+-    def update_event(
+-        self,
+-        event_id: str,
+-        summary: Optional[str] = None,
+-        start_rfc3339: Optional[str] = None,
+-        end_rfc3339: Optional[str] = None,
+-        description: Optional[str] = None
+-    ):
+-        event = self.service.events().get(calendarId=self.calendar_id, eventId=event_id).execute()
+-
+-        if summary is not None:
+-            event["summary"] = summary
+-        if description is not None:
+-            event["description"] = description
+-        if start_rfc3339 is not None:
+-            event["start"] = {"dateTime": start_rfc3339, "timeZone": os.getenv("GOOGLE_CALENDAR_TIMEZONE")}
+-        if end_rfc3339 is not None:
+-            event["end"] = {"dateTime": end_rfc3339, "timeZone": os.getenv("GOOGLE_CALENDAR_TIMEZONE")}
+-
+-        return self.service.events().update(calendarId=self.calendar_id, eventId=event_id, body=event).execute()
+-
+-    def delete_event(self, event_id: str) -> None:
+-        self.service.events().delete(calendarId=self.calendar_id, eventId=event_id).execute()
+-
+-
+-def to_rfc3339(dt: datetime) -> str:
+-    if dt.tzinfo is None:
+-        return dt.isoformat()
+-    return dt.isoformat()
+diff --git a/agent/main.py b/agent/main.py
+index ad1d24a..0667e3c 100644
+--- a/agent/main.py
++++ b/agent/main.py
+@@ -1,137 +1,99 @@
+-from dotenv import load_dotenv
+-from google import genai
+-from google.genai import types
+-from fastapi import FastAPI
++from fastapi import FastAPI, Request
++from fastapi.responses import JSONResponse
+ from pydantic import BaseModel
+-from datetime import datetime, date, time
+ import json
+-import os
+-from session import Session
+-from google_calendar import CalendarClient
+-import pytz
+-
+-load_dotenv()
+-
+-gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+-
+-calendar_client = None
+-try:
+-    calendar_client = CalendarClient.from_env()
+-except Exception:
+-    calendar_client = None
++from services.session import Session
++from services.google_calendar import GoogleCalendarClient
++from models import CalendarCreateRequest, CalendarDeleteRequest, CalendarListRequest, CalendarUpdateRequest
++from utils.date_utils import get_day_range, format_google_date, localize_datetime, get_now_formatted
++from config import CALENDAR_CLIENT, TIMEZONE, GEMINI_CLIENT
+ 
+ app = FastAPI()
+ 
+ sessions: dict[str, Session] = {}
+ 
+-
+-class CalendarListRequest(BaseModel):
+-    day: date
+-
+-
+-class CalendarCreateRequest(BaseModel):
+-    summary: str
+-    start_time: datetime
+-    end_time: datetime
+-    description: str = ""
+-
+-
+-class CalendarUpdateRequest(BaseModel):
+-    event_id: str
+-    summary: str | None = None
+-    start_time: datetime | None = None
+-    end_time: datetime | None = None
+-    description: str | None = None
+-
+-
+-class CalendarDeleteRequest(BaseModel):
+-    event_id: str
++@app.middleware("http")
++async def calendar_check(request: Request, call_next):
++    path = request.url.path
++    if path.startswith("/api/calendar"):
++        if CALENDAR_CLIENT is None:
++            return JSONResponse(
++                status_code=503,
++                content={"error": "Google Calendar no está configurado o las credenciales son inválidas"}
++            )
++    
++    response = await call_next(request)
++    return response
+ 
+ 
+ @app.post("/api/calendar/list")
+ async def calendar_list_endpoint(payload: CalendarListRequest):
+-    if calendar_client is None:
+-        return {"error": "Google Calendar no está configurado"}
+-
+-    local_tz = pytz.timezone(os.getenv("GOOGLE_CALENDAR_TIMEZONE"))
++    start_iso, end_iso = get_day_range(payload.day, TIMEZONE)
+     
+-    start_dt = local_tz.localize(datetime.combine(payload.day, time.min))
+-    end_dt = local_tz.localize(datetime.combine(payload.day, time.max))
+-    
+-    result = calendar_client.list_events(
+-        time_min=start_dt.isoformat(),
+-        time_max=end_dt.isoformat(),
++    result = CALENDAR_CLIENT.list_events(
++        time_min=start_iso,
++        time_max=end_iso,
+         max_results=25,
+     )
+ 
+-    def format_date(date_str: str | None) -> str:
+-        if not date_str:
+-            return ""
+-        try:
+-            clean_date = date_str.replace("Z", "+00:00")
+-            dt = datetime.fromisoformat(clean_date)
+-            return dt.strftime("%Y-%m-%d %H:%M:%S")
+-        except ValueError:
+-            return f"{date_str} 00:00:00"
+-
+-    events_simplified = [
++    return [
+         {
+             "summary": "Turno ocupado",
+-            "from": format_date(event.get("start", {}).get("dateTime") or event.get("start", {}).get("date")),
+-            "to": format_date(event.get("end", {}).get("dateTime") or event.get("end", {}).get("date"))
++            "from": format_google_date(event.get("start", {}).get("dateTime") or event.get("start", {}).get("date")),
++            "to": format_google_date(event.get("end", {}).get("dateTime") or event.get("end", {}).get("date"))
+         }
+         for event in result.get("items", [])
+     ]
+ 
+-    return events_simplified
+-
+ 
+ @app.post("/api/calendar/create")
+ async def calendar_create_endpoint(payload: CalendarCreateRequest):
+-    if calendar_client is None:
+-        return {"error": "Google Calendar no está configurado"}
+-
+-    timezone = os.getenv("GOOGLE_CALENDAR_TIMEZONE")
++    start_iso = localize_datetime(payload.start_time, TIMEZONE).isoformat()
++    end_iso = localize_datetime(payload.end_time, TIMEZONE).isoformat()
+     
+-    local_tz = pytz.timezone(timezone)
+-    
+-    start_dt_local = local_tz.localize(payload.start_time)
+-    end_dt_local = local_tz.localize(payload.end_time)
+-    
+-    return calendar_client.create_event(
+-        summary=payload.summary,
+-        start_rfc3339=start_dt_local.isoformat(),
+-        end_rfc3339=end_dt_local.isoformat(),
+-        description=payload.description
+-    )
++    try:
++        response = CALENDAR_CLIENT.create_event(
++            summary=payload.summary,
++            start_rfc3339=start_iso,
++            end_rfc3339=end_iso,
++            description=payload.description
++        )
++    except Exception as e:
++        print("Error requesting create a new event:", e)
++        return {"status": "error"}
++
++    if response.get("status") != "confirmed":
++        return {"status": "error"}
++
++    return {"status": "confirmed", "event_id": response.get("id")}
+ 
+ 
+ @app.post("/api/calendar/update")
+ async def calendar_update_endpoint(payload: CalendarUpdateRequest):
+-    if calendar_client is None:
+-        return {"error": "Google Calendar no está configurado"}
++    start_iso = localize_datetime(payload.start_time, TIMEZONE).isoformat()
++    end_iso = localize_datetime(payload.end_time, TIMEZONE).isoformat()
+ 
+-    timezone = os.getenv("GOOGLE_CALENDAR_TIMEZONE")
++    try:
++        response = CALENDAR_CLIENT.update_event(
++            event_id=payload.event_id,
++            summary=payload.summary,
++            start_rfc3339=start_iso,
++            end_rfc3339=end_iso,
++            description=payload.description
++        )
++    except Exception as e:
++        print("Error requesting create a new event:", e)
++        return {"status": "error"}
+ 
+-    local_tz = pytz.timezone(timezone)
+-    
+-    start_dt_local = local_tz.localize(payload.start_time)
+-    end_dt_local = local_tz.localize(payload.end_time)
+-
+-    return calendar_client.update_event(
+-        event_id=payload.event_id,
+-        summary=payload.summary,
+-        start_rfc3339=start_dt_local.isoformat(),
+-        end_rfc3339=end_dt_local.isoformat(),
+-        description=payload.description
+-    )
++    if response.get("status") != "confirmed":
++        return {"status": "error"}
++
++    return {"status": "confirmed", "event_id": response.get("id")}
+ 
+ 
+ @app.post("/api/calendar/delete")
+ async def calendar_delete_endpoint(payload: CalendarDeleteRequest):
+-    if calendar_client is None:
+-        return {"error": "Google Calendar no está configurado"}
+-    calendar_client.delete_event(payload.event_id)
++    CALENDAR_CLIENT.delete_event(payload.event_id)
+     return {"ok": True}
+ 
+ 
+@@ -139,13 +101,12 @@ async def calendar_delete_endpoint(payload: CalendarDeleteRequest):
+ async def start_endpoint(call_sid: str):
+     """Crea una nueva sesion y devuelve el mensaje de bienvenida"""
+     if not call_sid in sessions:
+-        sessions[call_sid] = Session(gemini_client)
++        sessions[call_sid] = Session(GEMINI_CLIENT)
+     
+     session = sessions[call_sid]
+ 
+-    today_datetime = datetime.today().strftime('%Y-%m-%d %H:%M:%S %A')
+-
+-    session.add_context(f"Se inicio una llamada, saluda al cliente. Hoy es {today_datetime}.")
++    now = get_now_formatted()
++    session.add_context(f"Se inicio una llamada, saluda al cliente. Hoy es {now}.")
+ 
+     response = session.generate()
+ 
+@@ -156,7 +117,7 @@ async def start_endpoint(call_sid: str):
+ async def context_endpoint(call_sid: str, context: str):
+     """Inyecta contexto en el chat y devuelve un mensaje"""
+     if not call_sid in sessions:
+-        sessions[call_sid] = Session(gemini_client)
++        sessions[call_sid] = Session(GEMINI_CLIENT)
+     
+     session = sessions[call_sid]
+ 
+@@ -171,7 +132,7 @@ async def context_endpoint(call_sid: str, context: str):
+ async def send_endpoint(call_sid: str, message: str):
+     """Envia un mensaje como usuario"""
+     if not call_sid in sessions:
+-        sessions[call_sid] = Session(gemini_client)
++        sessions[call_sid] = Session(GEMINI_CLIENT)
+     
+     session = sessions[call_sid]
+ 
+diff --git a/agent/session.py b/agent/session.py
+deleted file mode 100644
+index 66f7a5e..0000000
+--- a/agent/session.py
++++ /dev/null
+@@ -1,40 +0,0 @@
+-from google import genai
+-from google.genai import types
+-import os
+-
+-SYSTEM_INSTRUCTION = ""
+-BUSSINES_CONTEXT = ""
+-
+-with open('system_instruction.txt', 'r') as file:
+-    SYSTEM_INSTRUCTION = file.read()
+-
+-with open('bussines_context.txt', 'r') as file:
+-    BUSSINES_CONTEXT = file.read()
+-
+-SYSTEM_CONTEXT = SYSTEM_INSTRUCTION + "\n\nCONTEXTO DEL NEGOCIO:\n" + BUSSINES_CONTEXT
+-
+-class Session:
+-    def __init__(self, gemini_client: genai.Client):
+-        self.gemini_client = gemini_client
+-        self.messages = []
+-    
+-    def add_message(self, role: str, message: str):
+-        print(f"({role}) {message}")
+-        self.messages.append({"role": role, "parts": [{"text": message}]})
+-
+-    def add_context(self, context: str):
+-        self.messages.append({"role": "user", "parts": [{"text": f"[SYSTEM CONTEXT] {context}"}]})
+-
+-    def generate(self):
+-        message = self.gemini_client.models.generate_content(
+-            model="gemini-2.5-flash-lite",
+-            config=types.GenerateContentConfig(
+-                system_instruction=SYSTEM_CONTEXT,
+-                response_mime_type="application/json",
+-            ),
+-            contents=self.messages
+-        )
+-
+-        self.add_message("model", message.text)
+-
+-        return message.text
+diff --git a/agent/system_instruction.txt b/agent/system_instruction.txt
+deleted file mode 100644
+index c80474e..0000000
+--- a/agent/system_instruction.txt
++++ /dev/null
+@@ -1,52 +0,0 @@
+-Eres un asistente de voz de IA optimizado para llamadas telefónicas. Tu objetivo es ayudar al cliente de forma cortés, natural y ejecutiva. Mantén siempre un tono agradable, profesional y evita frases robóticas.
+-
+-REGLAS CRÍTICAS:
+-    Longitud: Máximo 25 palabras por mensaje para mantener la fluidez de la llamada.
+-
+-    Flujo de Acción: Si la solicitud requiere una acción, ejecútala PRIMERO. Solo después de recibir la confirmación de [SYSTEM CONTEXT], usa TALK para informar al cliente.
+-
+-    Precisión: Antes de usar CREATE_APPOINTMENT, asegúrate de haber obtenido nombre, fecha y hora.
+-
+-    Formato: Responde exclusivamente en JSON. Cualquier texto fuera del JSON invalidará la respuesta. No añadas texto antes ni después, ni llaves extra.
+-
+-    Importate. Siempre que hables te dirijes hacia al cliente, a nadie más.
+-
+-    No confundas: No le meciones información interna al cliente, o información de la base de datos no la necesita.
+-
+-    Chequea: Siempre chequea si el día esta disponible o no, no agendes un turno si no sabes la disponibilidad.
+-
+-    Fechas: Cuando gestiones fechas y horas, utiliza siempre el formato ISO 8601 (YYYY-MM-DDTHH:MM:SS). Por ejemplo: para el 12 de enero de 2026 a las 3 de la tarde, usa: 2026-01-12T15:00:00. No uses formatos regionales como DD/MM/YYYY o nombres de meses en texto.
+-    
+-    Case sensitive: Las claves de JSON siempre van en miniscula tal cual en los parametros de las acciones. "DAY" = Mal "day" = bien
+-
+-FORMATO JSON: { "action": "NOMBRE_ACCION", "data": {"clave": "valor"} }
+-
+-ACCIONES DISPONIBLES:
+-
+-"TALK":
+-    Descripción: Hablar con el cliente. Úsalo para saludar, preguntar datos o dar respuestas. Siempre inicia la llamada con esta acción.
+-    Parámetros: {"message": "MENSAJE_BREVE_Y_NATURAL"}
+-
+-"END_CALL":
+-    Descripción: Finaliza la llamada inmediatamente.
+-    Parámetros: {"message": "DESPEDIDA_AMABLE"}
+-
+-"CALENDAR_LIST":
+-    Descripción: Consulta disponibilidad de un día completo.
+-    Parámetros: {"day": "YYYY-MM-DD"} 
+-    Nota: Úsalo siempre antes de agendar para ver qué horarios están ocupados
+-
+-"CALENDAR_CREATE":
+-    Descripción: Crea un evento en Google Calendar.
+-    Parámetros: {"summary": "TITULO", "start_time": "FECHA_DE_INICIO", "end_time": "FECHA_DE_FINAL", "description": ""}
+-    Devuelve: [SYSTEM CONTEXT] CALENDAR_CREATE_OK o CALENDAR_CREATE_ERROR.
+-
+-"CALENDAR_UPDATE":
+-    Descripción: Actualiza un evento existente.
+-    Parámetros: {"event_id": "ID", "summary": "O_VACIO", "start_time": "FECHA_DE_INICIO_O_VACIO", "end_time": "FECHA_DE_FINAL_O_VACIO", "description": "O_VACIO"}
+-    Devuelve: [SYSTEM CONTEXT] CALENDAR_UPDATE_OK o CALENDAR_UPDATE_ERROR.
+-
+-"CALENDAR_DELETE":
+-    Descripción: Elimina/cancela un evento existente.
+-    Parámetros: {"event_id": "ID"}
+-    Devuelve: [SYSTEM CONTEXT] CALENDAR_DELETE_OK o CALENDAR_DELETE_ERROR.
+\ No newline at end of file

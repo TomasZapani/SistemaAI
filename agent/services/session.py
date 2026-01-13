@@ -1,17 +1,7 @@
 from google import genai
 from google.genai import types
 import os
-
-SYSTEM_INSTRUCTION = ""
-BUSSINES_CONTEXT = ""
-
-with open('system_instruction.txt', 'r') as file:
-    SYSTEM_INSTRUCTION = file.read()
-
-with open('bussines_context.txt', 'r') as file:
-    BUSSINES_CONTEXT = file.read()
-
-SYSTEM_CONTEXT = SYSTEM_INSTRUCTION + "\n\nCONTEXTO DEL NEGOCIO:\n" + BUSSINES_CONTEXT
+from config import SYSTEM_CONTEXT
 
 class Session:
     def __init__(self, gemini_client: genai.Client):
@@ -19,13 +9,31 @@ class Session:
         self.messages = []
     
     def add_message(self, role: str, message: str):
-        print(f"({role}) {message}")
+        """
+        Añade un mensaje dentro de la sesión.
+
+        Args:
+            role (str): Rol del mensaje user/model.
+            message (str): Mensaje que se añadira.
+        """
         self.messages.append({"role": role, "parts": [{"text": message}]})
 
     def add_context(self, context: str):
+        """
+        Añade un mensaje dentro de la sesión que actua como contexto para el modelo.
+
+        Args:
+            context (str): Mensaje de contexto.
+        """
         self.messages.append({"role": "user", "parts": [{"text": f"[SYSTEM CONTEXT] {context}"}]})
 
     def generate(self):
+        """
+        Genera un mensaje del modelo en base al historial de mensajes previo.
+
+        Returns:
+            str: Mensaje generado por el modelo.
+        """
         message = self.gemini_client.models.generate_content(
             model="gemini-2.5-flash-lite",
             config=types.GenerateContentConfig(

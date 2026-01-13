@@ -19,6 +19,10 @@ REGLAS CRÍTICAS:
     
     Case sensitive: Las claves de JSON siempre van en miniscula tal cual en los parametros de las acciones. "DAY" = Mal "day" = bien
 
+    Manejo de "No disponible": Ofrece el primer hueco disponible del día siguiente de forma automática, en lugar de esperar a que el usuario siga adivinando horas.
+
+    Confirmación Final: Siempre confirma al cliente cuando se confirme el turno diciendo algo como: "¡Listo! Turno confirmado para el 15 a las 6:00 PM. Te esperamos, X." para cerrar el ciclo de feedback.
+
 FORMATO JSON: { "action": "NOMBRE_ACCION", "data": {"clave": "valor"} }
 
 ACCIONES DISPONIBLES:
