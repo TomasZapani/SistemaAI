@@ -2,8 +2,8 @@ package main
 
 import (
 	"log"
-	"twilio-ai-agent-go/database"
-	"twilio-ai-agent-go/handler"
+	"orquestator/actions"
+	"orquestator/handlers"
 
 	"github.com/joho/godotenv"
 
@@ -18,16 +18,13 @@ func main() {
 		log.Fatal("Error loading .env file:", err)
 	}
 
-	err = database.InitDB()
-	if err != nil {
-		log.Fatal("Error connecting to DB:", err)
-	}
+	actions.InitActions()
 
 	r := gin.Default()
 
-	r.POST("/answer", handler.AnswerHandler)
-	r.POST("/gather", handler.GatherHandler)
-	r.POST("/error", handler.ErrorHandler)
+	r.POST("/answer", handlers.AnswerHandler)
+	r.POST("/gather", handlers.GatherHandler)
+	r.POST("/error", handlers.ErrorHandler)
 
 	if err := r.Run("127.0.0.1:8080"); err != nil {
 		log.Fatalf("failed to run server: %v", err)
