@@ -68,12 +68,10 @@ async def calendar_list_endpoint(payload: CalendarListRequest):
         if not date_str:
             return ""
         try:
-            # Reemplazamos la 'Z' por '+00:00' para que fromisoformat sea compatible
             clean_date = date_str.replace("Z", "+00:00")
             dt = datetime.fromisoformat(clean_date)
             return dt.strftime("%Y-%m-%d %H:%M:%S")
         except ValueError:
-            # Si es un evento de todo el día, solo vendrá la fecha (YYYY-MM-DD)
             return f"{date_str} 00:00:00"
 
     events_simplified = [
@@ -95,17 +93,14 @@ async def calendar_create_endpoint(payload: CalendarCreateRequest):
 
     timezone = os.getenv("GOOGLE_CALENDAR_TIMEZONE")
     
-    # 1. Obtenemos el objeto de zona horaria (ej: "America/Argentina/Buenos_Aires")
     local_tz = pytz.timezone(timezone)
     
-    # 2. Localizamos el datetime (le asignamos la zona horaria)
-    # Esto añade automáticamente el -03:00 o lo que corresponda
     start_dt_local = local_tz.localize(payload.start_time)
     end_dt_local = local_tz.localize(payload.end_time)
     
     return calendar_client.create_event(
         summary=payload.summary,
-        start_rfc3339=start_dt_local.isoformat(), # Ya incluye el offset correcto
+        start_rfc3339=start_dt_local.isoformat(),
         end_rfc3339=end_dt_local.isoformat(),
         description=payload.description
     )
@@ -115,11 +110,19 @@ async def calendar_create_endpoint(payload: CalendarCreateRequest):
 async def calendar_update_endpoint(payload: CalendarUpdateRequest):
     if calendar_client is None:
         return {"error": "Google Calendar no está configurado"}
+
+    timezone = os.getenv("GOOGLE_CALENDAR_TIMEZONE")
+
+    local_tz = pytz.timezone(timezone)
+    
+    start_dt_local = local_tz.localize(payload.start_time)
+    end_dt_local = local_tz.localize(payload.end_time)
+
     return calendar_client.update_event(
         event_id=payload.event_id,
         summary=payload.summary,
-        start_rfc3339=payload.start_time.isoformat() + "Z",
-        end_rfc3339=payload.end_time.isoformat() + "Z",
+        start_rfc3339=start_dt_local.isoformat(),
+        end_rfc3339=end_dt_local.isoformat(),
         description=payload.description
     )
 
