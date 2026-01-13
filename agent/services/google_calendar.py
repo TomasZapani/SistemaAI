@@ -12,15 +12,18 @@ SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 
 @dataclass
-class CalendarClient:
+class GoogleCalendarClient:
     service: Any
     calendar_id: str
+    timezone_str: str = "UTC"
 
     @staticmethod
     def from_env() -> "CalendarClient":
         calendar_id = os.getenv("GOOGLE_CALENDAR_ID")
         if not calendar_id:
             raise ValueError("Missing env var GOOGLE_CALENDAR_ID")
+
+        tz = os.getenv("GOOGLE_CALENDAR_self.timezone_str", "UTC")
 
         sa_path = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE")
         sa_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
@@ -35,7 +38,7 @@ class CalendarClient:
             )
 
         service = build("calendar", "v3", credentials=creds, cache_discovery=False)
-        return CalendarClient(service=service, calendar_id=calendar_id)
+        return GoogleCalendarClient(service=service, calendar_id=calendar_id, timezone_str=tz)
 
     def list_events(
         self,
@@ -68,8 +71,8 @@ class CalendarClient:
         body = {
             "summary": summary,
             "description": description,
-            "start": {"dateTime": start_rfc3339, "timeZone": os.getenv("GOOGLE_CALENDAR_TIMEZONE")},
-            "end": {"dateTime": end_rfc3339, "timeZone": os.getenv("GOOGLE_CALENDAR_TIMEZONE")},
+            "start": {"dateTime": start_rfc3339, "timeZone": self.timezone_str},
+            "end": {"dateTime": end_rfc3339, "timeZone": self.timezone_str},
         }
         return self.service.events().insert(calendarId=self.calendar_id, body=body).execute()
 
@@ -88,9 +91,9 @@ class CalendarClient:
         if description is not None:
             event["description"] = description
         if start_rfc3339 is not None:
-            event["start"] = {"dateTime": start_rfc3339, "timeZone": os.getenv("GOOGLE_CALENDAR_TIMEZONE")}
+            event["start"] = {"dateTime": start_rfc3339, "timeZone": self.timezone_str}
         if end_rfc3339 is not None:
-            event["end"] = {"dateTime": end_rfc3339, "timeZone": os.getenv("GOOGLE_CALENDAR_TIMEZONE")}
+            event["end"] = {"dateTime": end_rfc3339, "timeZone": self.timezone_str}
 
         return self.service.events().update(calendarId=self.calendar_id, eventId=event_id, body=event).execute()
 
