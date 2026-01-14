@@ -1,11 +1,14 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import json
+
 from services.session import Session
 from services.google_calendar import GoogleCalendarClient
 from models import CalendarCreateRequest, CalendarDeleteRequest, CalendarListRequest, CalendarUpdateRequest
+
 from utils.date_utils import get_day_range, format_google_date, localize_datetime, get_now_formatted
+
 from config import CALENDAR_CLIENT, TIMEZONE, GEMINI_CLIENT
 
 app = FastAPI()
@@ -38,7 +41,9 @@ async def calendar_list_endpoint(payload: CalendarListRequest):
 
     return [
         {
-            "summary": "Turno ocupado",
+            "event_id": event.get("id", "null"),
+            "summary": event.get("summary", "null"),
+            "status": "Turno ocupado",
             "from": format_google_date(event.get("start", {}).get("dateTime") or event.get("start", {}).get("date")),
             "to": format_google_date(event.get("end", {}).get("dateTime") or event.get("end", {}).get("date"))
         }
@@ -70,8 +75,13 @@ async def calendar_create_endpoint(payload: CalendarCreateRequest):
 
 @app.post("/api/calendar/update")
 async def calendar_update_endpoint(payload: CalendarUpdateRequest):
-    start_iso = localize_datetime(payload.start_time, TIMEZONE).isoformat()
-    end_iso = localize_datetime(payload.end_time, TIMEZONE).isoformat()
+    start_iso = None
+    end_iso = None
+
+    if payload.start_time:
+        start_iso = localize_datetime(payload.start_time, TIMEZONE).isoformat()
+    if payload.end_time:
+        end_iso = localize_datetime(payload.end_time, TIMEZONE).isoformat()
 
     try:
         response = CALENDAR_CLIENT.update_event(
@@ -100,7 +110,7 @@ async def calendar_delete_endpoint(payload: CalendarDeleteRequest):
 @app.post("/api/session/start")
 async def start_endpoint(call_sid: str):
     """Crea una nueva sesion y devuelve el mensaje de bienvenida"""
-    if not call_sid in sessions:
+    if call_sid not in sessions:
         sessions[call_sid] = Session(GEMINI_CLIENT)
     
     session = sessions[call_sid]
@@ -116,8 +126,8 @@ async def start_endpoint(call_sid: str):
 @app.post("/api/session/context")
 async def context_endpoint(call_sid: str, context: str):
     """Inyecta contexto en el chat y devuelve un mensaje"""
-    if not call_sid in sessions:
-        sessions[call_sid] = Session(GEMINI_CLIENT)
+    if call_sid not in sessions:
+            raise HTTPException(status_code=404, detail="No se pudo finalizar: la sesión no existe.")
     
     session = sessions[call_sid]
 
@@ -131,8 +141,8 @@ async def context_endpoint(call_sid: str, context: str):
 @app.post("/api/session/send")
 async def send_endpoint(call_sid: str, message: str):
     """Envia un mensaje como usuario"""
-    if not call_sid in sessions:
-        sessions[call_sid] = Session(GEMINI_CLIENT)
+    if call_sid not in sessions:
+            raise HTTPException(status_code=404, detail="No se pudo finalizar: la sesión no existe.")
     
     session = sessions[call_sid]
 
