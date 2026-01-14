@@ -13,8 +13,9 @@ type AgentResponse struct {
 	Data   json.RawMessage `json:"data"`
 }
 
+// Starts a new session using a callSid
 func Start(callSid string) (*AgentResponse, error) {
-	apiURL := os.Getenv("LLM_URL") + "/api/session/start"
+	apiURL := os.Getenv("AGENT_API") + "/api/session/start"
 	params := url.Values{}
 	params.Add("call_sid", callSid)
 
@@ -34,8 +35,9 @@ func Start(callSid string) (*AgentResponse, error) {
 	return &agentResponse, nil
 }
 
+// Send message to the session as a User
 func Send(callSid string, message string) (*AgentResponse, error) {
-	apiURL := os.Getenv("LLM_URL") + "/api/session/send"
+	apiURL := os.Getenv("AGENT_API") + "/api/session/send"
 	params := url.Values{}
 	params.Add("call_sid", callSid)
 	params.Add("message", message)
@@ -56,8 +58,9 @@ func Send(callSid string, message string) (*AgentResponse, error) {
 	return &agentResponse, nil
 }
 
+// Adds context for the model
 func Context(callSid string, context string) (*AgentResponse, error) {
-	apiURL := os.Getenv("LLM_URL") + "/api/session/context"
+	apiURL := os.Getenv("AGENT_API") + "/api/session/context"
 	params := url.Values{}
 	params.Add("call_sid", callSid)
 	params.Add("context", context)
@@ -78,8 +81,9 @@ func Context(callSid string, context string) (*AgentResponse, error) {
 	return &agentResponse, nil
 }
 
+// Ends and delete a existing session
 func End(callSid string) error {
-	apiURL := os.Getenv("LLM_URL") + "/api/session/end"
+	apiURL := os.Getenv("AGENT_API") + "/api/session/end"
 	params := url.Values{}
 	params.Add("call_sid", callSid)
 

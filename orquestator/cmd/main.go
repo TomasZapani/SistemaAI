@@ -4,6 +4,7 @@ import (
 	"log"
 	"orquestator/actions"
 	"orquestator/handlers"
+	"os"
 
 	"github.com/joho/godotenv"
 
@@ -13,6 +14,7 @@ import (
 )
 
 func main() {
+	// Load .env file
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file:", err)
@@ -22,11 +24,14 @@ func main() {
 
 	r := gin.Default()
 
+	// Handlers
 	r.POST("/answer", handlers.AnswerHandler)
 	r.POST("/gather", handlers.GatherHandler)
 	r.POST("/error", handlers.ErrorHandler)
 
-	if err := r.Run("127.0.0.1:8080"); err != nil {
+	ipListen := os.Getenv("HOST") + ":" + os.Getenv("PORT")
+
+	if err := r.Run(ipListen); err != nil {
 		log.Fatalf("failed to run server: %v", err)
 	}
 }

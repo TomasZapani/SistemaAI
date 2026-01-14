@@ -16,10 +16,12 @@ func registerAction(actionName string, handler ActionHandler) {
 	actions[actionName] = handler
 }
 
-func GetAction(actionName string) ActionHandler {
+// Get an action handler
+func GetActionHandler(actionName string) ActionHandler {
 	return actions[actionName]
 }
 
+// Init all actions handlers for the model
 func InitActions() {
 	actions = make(map[string]ActionHandler)
 
@@ -170,32 +172,3 @@ func HandleEndCall(callSid string, data json.RawMessage) (string, error) {
 	session.End(callSid)
 	return helper.EndCall(talkData.Message)
 }
-
-/*
-func HandleCreateAppointment(callSid string, fromNumber string, data json.RawMessage) (string, error) {
-	var appointmentData CreateAppointmentData
-	if err := json.Unmarshal(data, &appointmentData); err != nil {
-		log.Println("Error unmarshaling appointment data:", err)
-		return helper.EndCall("Lo siento, tuvimos un error interno, por favor intentalo más tarde.")
-	}
-
-	// 1. Guardar en DB
-	err := database.CreateAppointment(&appointmentData, fromNumber)
-
-	// 2. Notificar al Agente sobre el resultado (Context)
-	contextResponse, err := Context(callSid, strconv.FormatBool(err == nil))
-	if err != nil {
-		log.Println("Error context response:", err)
-		return helper.EndCall("Lo siento, tuvimos un error interno, por favor intentalo más tarde.")
-	}
-
-	// 3. Responder al usuario con el mensaje que el agente decida
-	var talkData TalkData
-	if err = json.Unmarshal(contextResponse.Data, &talkData); err != nil {
-		log.Println("Error unmarshaling context response data:", err)
-		return helper.EndCall("Lo siento, tuvimos un error interno, por favor intentalo más tarde.")
-	}
-
-	return helper.GatherCall(talkData.Message)
-}
-*/

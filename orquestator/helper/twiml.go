@@ -6,12 +6,13 @@ import (
 	"github.com/twilio/twilio-go/twiml"
 )
 
+// End the call with a message
 func EndCall(message string) (string, error) {
 	twimlResult, err := twiml.Voice([]twiml.Element{
 		&twiml.VoiceSay{
 			Message:  message,
-			Voice:    "Polly.Lupe-Generative",
-			Language: "es-US",
+			Voice:    os.Getenv("TWILIO_VOICE"),
+			Language: os.Getenv("TWILIO_LANGUAGE"),
 		},
 		&twiml.VoiceHangup{},
 	})
@@ -19,11 +20,12 @@ func EndCall(message string) (string, error) {
 	return twimlResult, err
 }
 
+// Use GatherCall to say something to the client and recive a speech transcription
 func GatherCall(message string) (string, error) {
 	twimlResult, err := twiml.Voice([]twiml.Element{
 		&twiml.VoiceGather{
 			Action:          os.Getenv("GATHER_ENDPOINT"),
-			Language:        "es-US",
+			Language:        os.Getenv("TWILIO_LANGUAGE"),
 			Input:           "speech",
 			Enhanced:        "true",
 			SpeechTimeout:   "auto",
@@ -33,8 +35,8 @@ func GatherCall(message string) (string, error) {
 			InnerElements: []twiml.Element{
 				&twiml.VoiceSay{
 					Message:  message,
-					Voice:    "Polly.Lupe-Generative",
-					Language: "es-US",
+					Voice:    os.Getenv("TWILIO_VOICE"),
+					Language: os.Getenv("TWILIO_LANGUAGE"),
 				},
 			},
 		},

@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// AnswerHandler handles the call from a client
 func AnswerHandler(context *gin.Context) {
 	callSid := context.PostForm("CallSid")
 
