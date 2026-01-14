@@ -33,7 +33,7 @@ type CalendarDeleteRequest struct {
 }
 
 func calendarPost(path string, payload any) ([]byte, error) {
-	apiURL := os.Getenv("LLM_URL") + path
+	apiURL := os.Getenv("AGENT_API") + path
 
 	body, err := json.Marshal(payload)
 	if err != nil {

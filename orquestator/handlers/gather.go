@@ -9,9 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GatherHandler handles the speech transcription and voice logic
 func GatherHandler(context *gin.Context) {
-	// fromNumber := context.PostForm("From")
-	//fromNumber := "+1333555666"
+	// Use context.PostForm("From") to get the client number
+	//fromNumber := context.PostForm("From")
 	speech := context.PostForm("SpeechResult")
 	callSid := context.PostForm("CallSid")
 
@@ -25,12 +26,14 @@ func GatherHandler(context *gin.Context) {
 
 	log.Printf("Action: %s", response.Action)
 
-	actionHandler := actions.GetAction(response.Action)
+	// Get the action handler
+	actionHandler := actions.GetActionHandler(response.Action)
 	if actionHandler == nil {
 		log.Println("Error action not found:", response.Action)
 		return
 	}
 
+	// Get the action result
 	result, err := actionHandler(callSid, response.Data)
 	if err != nil {
 		log.Println("Error handling action:", response.Action, err)
@@ -38,6 +41,7 @@ func GatherHandler(context *gin.Context) {
 		return
 	}
 
+	// Send result to Twilio
 	context.Header("Content-Type", "text/xml")
 	context.String(http.StatusOK, result)
 }
