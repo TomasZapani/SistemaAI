@@ -15,13 +15,12 @@ def _conn():
     finally:
         conn.close()
 
-def init_db() -> None:
+def init_db():
     with _conn() as conn:
-        # Se agregaron client_name, client_phone y sync_status
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS calendar_events (
-                event_id TEXT PRIMARY KEY,
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS appointments (
+                id TEXT PRIMARY KEY,
+                google_event_id TEXT UNIQUE,
                 summary TEXT NOT NULL,
                 client_name TEXT,
                 client_phone TEXT,
@@ -29,17 +28,18 @@ def init_db() -> None:
                 end_time TEXT NOT NULL,
                 description TEXT,
                 status TEXT NOT NULL DEFAULT 'confirmed',
-                sync_status TEXT DEFAULT 'pending', 
+                sync_status TEXT DEFAULT 'pending',
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 updated_at TEXT NOT NULL DEFAULT (datetime('now'))
             )
-            """
-        )
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_calendar_events_start_time ON calendar_events(start_time)")
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_phone ON appointments(client_phone)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_start_time ON appointments(start_time)")
 
-def upsert_event(
+def upsert_appointment(
     *,
-    event_id: str,
+    id: str,
+    google_event_id: str = None,
     summary: str,
     start_time: str,
     end_time: str,
@@ -53,11 +53,12 @@ def upsert_event(
         conn.execute(
             """
             INSERT INTO calendar_events (
-                event_id, summary, client_name, client_phone, 
+                id, google_event_id, summary, client_name, client_phone, 
                 start_time, end_time, description, status, sync_status
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(event_id) DO UPDATE SET
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                google_event_id=COALESCE(excluded.google_event_id, calendar_events.google_event_id),
                 summary=excluded.summary,
                 client_name=COALESCE(excluded.client_name, calendar_events.client_name),
                 client_phone=COALESCE(excluded.client_phone, calendar_events.client_phone),
@@ -68,46 +69,48 @@ def upsert_event(
                 sync_status=excluded.sync_status,
                 updated_at=datetime('now')
             """,
-            (event_id, summary, client_name, client_phone, start_time, end_time, description, status, sync_status),
+            (id, google_event_id, summary, client_name, client_phone, start_time, end_time, description, status, sync_status),
         )
 
-def mark_deleted(*, event_id: str) -> None:
+def mark_deleted(*, id: str) -> None:
+    """Marca como borrado usando el ID interno."""
     with _conn() as conn:
         conn.execute(
             """
             UPDATE calendar_events
             SET status='deleted', sync_status='pending', updated_at=datetime('now')
-            WHERE event_id=?
+            WHERE id=?
             """,
-            (event_id,),
+            (id,),
         )
 
-def get_event(*, event_id: str) -> Optional[dict]:
+def get_appointment(*, id: str) -> Optional[dict]:
+    """Obtiene un evento por su ID interno."""
     with _conn() as conn:
         cur = conn.execute(
             """
-            SELECT event_id, summary, client_name, client_phone, start_time, 
+            SELECT id, google_event_id, summary, client_name, client_phone, start_time, 
                    end_time, description, status, sync_status, created_at, updated_at
             FROM calendar_events
-            WHERE event_id=?
+            WHERE id=?
             """,
-            (event_id,),
+            (id,),
         )
         row = cur.fetchone()
         if row is None:
             return None
         return {
-            "event_id": row[0], "summary": row[1], "client_name": row[2],
-            "client_phone": row[3], "start_time": row[4], "end_time": row[5],
-            "description": row[6], "status": row[7], "sync_status": row[8],
-            "created_at": row[9], "updated_at": row[10]
+            "id": row[0], "google_event_id": row[1], "summary": row[2], 
+            "client_name": row[3], "client_phone": row[4], "start_time": row[5], 
+            "end_time": row[6], "description": row[7], "status": row[8], 
+            "sync_status": row[9], "created_at": row[10], "updated_at": row[11]
         }
 
 def list_events_sql(start_iso: str, end_iso: str) -> list[dict]:
     with _conn() as conn:
         cur = conn.execute(
             """
-            SELECT event_id, summary, client_name, start_time, end_time, description
+            SELECT id, summary, client_name, start_time, end_time, description
             FROM calendar_events
             WHERE status != 'deleted'
               AND start_time >= ? 
@@ -118,7 +121,7 @@ def list_events_sql(start_iso: str, end_iso: str) -> list[dict]:
         )
         return [
             {
-                "event_id": row[0],
+                "id": row[0],
                 "summary": row[1],
                 "client_name": row[2],
                 "from": row[3],
@@ -133,7 +136,7 @@ def list_events_by_phone_sql(phone: str) -> list[dict]:
     with _conn() as conn:
         cur = conn.execute(
             """
-            SELECT event_id, summary, start_time, end_time, description, status
+            SELECT id, summary, start_time, end_time, description, status
             FROM calendar_events
             WHERE client_phone = ? AND status != 'deleted'
             ORDER BY start_time ASC
@@ -142,7 +145,7 @@ def list_events_by_phone_sql(phone: str) -> list[dict]:
         )
         return [
             {
-                "event_id": row[0],
+                "id": row[0],
                 "summary": row[1],
                 "from": row[2],
                 "to": row[3],

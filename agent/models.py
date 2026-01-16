@@ -1,28 +1,29 @@
 from pydantic import BaseModel
 from datetime import date, datetime
+from typing import Optional
 
-class CalendarListRequest(BaseModel):
+class AppointmentListRequest(BaseModel):
     day: date
 
-class CalendarCreateRequest(BaseModel):
+class AppointmentCreateRequest(BaseModel):
     summary: str
     client_name: str
     client_phone: str
     start_time: datetime
     end_time: datetime
-    description: str | None = ""
+    description: Optional[str] = ""
 
-class CalendarUpdateRequest(BaseModel):
-    event_id: str
-    summary: str | None = None
-    client_name: str | None = None
-    client_phone: str | None = None
-    start_time: datetime | None = None
-    end_time: datetime | None = None
-    description: str | None = None
+class AppointmentUpdateRequest(BaseModel):
+    id: str
+    summary: Optional[str] = None
+    client_name: Optional[str] = None
+    client_phone: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    description: Optional[str] = None
 
-class CalendarDeleteRequest(BaseModel):
-    event_id: str
+class AppointmentDeleteRequest(BaseModel):
+    id: str
 
-class CalendarSearchRequest(BaseModel):
+class AppointmentSearchRequest(BaseModel):
     client_phone: str
