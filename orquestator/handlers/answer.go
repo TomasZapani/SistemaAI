@@ -11,6 +11,7 @@ import (
 
 // AnswerHandler handles the call from a client
 func AnswerHandler(context *gin.Context) {
+	fromNumber := context.PostForm("From")
 	callSid := context.PostForm("CallSid")
 
 	response, err := session.Start(callSid)
@@ -24,7 +25,7 @@ func AnswerHandler(context *gin.Context) {
 		return
 	}
 
-	result, err := actions.HandleTalk(callSid, response.Data)
+	result, err := actions.HandleTalk(callSid, fromNumber, response.Data)
 	if err != nil {
 		log.Println("Error handling action:", response.Action, err)
 		context.String(http.StatusInternalServerError, err.Error())

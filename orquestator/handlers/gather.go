@@ -11,8 +11,7 @@ import (
 
 // GatherHandler handles the speech transcription and voice logic
 func GatherHandler(context *gin.Context) {
-	// Use context.PostForm("From") to get the client number
-	//fromNumber := context.PostForm("From")
+	fromNumber := context.PostForm("From")
 	speech := context.PostForm("SpeechResult")
 	callSid := context.PostForm("CallSid")
 
@@ -34,7 +33,7 @@ func GatherHandler(context *gin.Context) {
 	}
 
 	// Get the action result
-	result, err := actionHandler(callSid, response.Data)
+	result, err := actionHandler(callSid, fromNumber, response.Data)
 	if err != nil {
 		log.Println("Error handling action:", response.Action, err)
 		context.String(http.StatusInternalServerError, err.Error())
