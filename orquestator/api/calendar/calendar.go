@@ -15,21 +15,29 @@ type CalendarListRequest struct {
 
 type CalendarCreateRequest struct {
 	Summary     string `json:"summary"`
+	ClientName  string `json:"client_name"`
+	ClientPhone string `json:"client_phone"`
 	StartTime   string `json:"start_time"`
 	EndTime     string `json:"end_time"`
 	Description string `json:"description"`
 }
 
 type CalendarUpdateRequest struct {
-	EventID     string  `json:"event_id"`
-	Summary     *string `json:"summary"`
-	StartTime   *string `json:"start_time"`
-	EndTime     *string `json:"end_time"`
-	Description *string `json:"description"`
+	EventID     string `json:"event_id"`
+	Summary     string `json:"summary"`
+	ClientName  string `json:"client_name"`
+	ClientPhone string `json:"client_phone"`
+	StartTime   string `json:"start_time"`
+	EndTime     string `json:"end_time"`
+	Description string `json:"description"`
 }
 
 type CalendarDeleteRequest struct {
 	EventID string `json:"event_id"`
+}
+
+type CalendarSearchRequest struct {
+	ClientPhone string `json:"client_phone"`
 }
 
 func calendarPost(path string, payload any) ([]byte, error) {
@@ -72,4 +80,8 @@ func CalendarUpdate(payload *CalendarUpdateRequest) ([]byte, error) {
 
 func CalendarDelete(payload *CalendarDeleteRequest) ([]byte, error) {
 	return calendarPost("/api/calendar/delete", payload)
+}
+
+func CalendarSearch(payload *CalendarSearchRequest) ([]byte, error) {
+	return calendarPost("/api/calendar/search", payload)
 }

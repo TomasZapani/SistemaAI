@@ -35,7 +35,7 @@ class Session:
             str: Mensaje generado por el modelo.
         """
         message = self.gemini_client.models.generate_content(
-            model="gemini-2.5-flash-lite",
+            model=os.getenv("GEMINI_MODEL"),
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_CONTEXT,
                 response_mime_type="application/json",

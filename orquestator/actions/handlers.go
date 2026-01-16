@@ -8,7 +8,7 @@ import (
 	"orquestator/helper"
 )
 
-type ActionHandler func(string, json.RawMessage) (string, error)
+type ActionHandler func(string, string, json.RawMessage) (string, error)
 
 var actions map[string]ActionHandler
 
@@ -31,9 +31,10 @@ func InitActions() {
 	registerAction("CALENDAR_CREATE", HandleCalendarCreate)
 	registerAction("CALENDAR_UPDATE", HandleCalendarUpdate)
 	registerAction("CALENDAR_DELETE", HandleCalendarDelete)
+	registerAction("CALENDAR_SEARCH", HandleCalendarSearch)
 }
 
-func HandleTalk(callSid string, data json.RawMessage) (string, error) {
+func HandleTalk(callSid, fromNumber string, data json.RawMessage) (string, error) {
 	var talkData TalkData
 	if err := json.Unmarshal(data, &talkData); err != nil {
 		log.Println("Error unmarshaling TALK data:", err)
@@ -42,7 +43,7 @@ func HandleTalk(callSid string, data json.RawMessage) (string, error) {
 	return helper.GatherCall(talkData.Message)
 }
 
-func HandleCalendarList(callSid string, data json.RawMessage) (string, error) {
+func HandleCalendarList(callSid, fromNumber string, data json.RawMessage) (string, error) {
 	var payload calendar.CalendarListRequest
 	if err := json.Unmarshal(data, &payload); err != nil {
 		log.Println("Error unmarshaling CALENDAR_LIST data:", err)
@@ -52,7 +53,12 @@ func HandleCalendarList(callSid string, data json.RawMessage) (string, error) {
 	respBody, err := calendar.CalendarList(&payload)
 	ctx := "CALENDAR_LIST_ERROR"
 	if err == nil {
-		ctx = "CALENDAR_LIST_OK " + string(respBody)
+		// Verificamos si la respuesta es una lista vacía "[]"
+		if string(respBody) == "[]" {
+			ctx = "CALENDAR_LIST_OK: No hay turnos agendados para este día. El día está totalmente libre."
+		} else {
+			ctx = "CALENDAR_LIST_OK " + string(respBody)
+		}
 	} else {
 		ctx = "CALENDAR_LIST_ERROR " + err.Error()
 	}
@@ -63,21 +69,32 @@ func HandleCalendarList(callSid string, data json.RawMessage) (string, error) {
 		return helper.EndCall("Lo siento, tuvimos un error interno, por favor intentalo más tarde.")
 	}
 
+	if contextResponse.Action != "TALK" {
+		log.Printf("La IA decidió saltar directamente a: %s", contextResponse.Action)
+
+		nextHandler := GetActionHandler(contextResponse.Action)
+		if nextHandler != nil {
+			return nextHandler(callSid, fromNumber, contextResponse.Data)
+		}
+	}
+
 	var talkData TalkData
 	if err = json.Unmarshal(contextResponse.Data, &talkData); err != nil {
-		log.Println("Error unmarshaling context response data:", err)
-		return helper.EndCall("Lo siento, tuvimos un error interno, por favor intentalo más tarde.")
+		log.Println("Error unmarshaling TALK data:", err)
+		return helper.EndCall("Lo siento, no pude procesar tu solicitud.")
 	}
 
 	return helper.GatherCall(talkData.Message)
 }
 
-func HandleCalendarCreate(callSid string, data json.RawMessage) (string, error) {
+func HandleCalendarCreate(callSid, fromNumber string, data json.RawMessage) (string, error) {
 	var payload calendar.CalendarCreateRequest
 	if err := json.Unmarshal(data, &payload); err != nil {
 		log.Println("Error unmarshaling CALENDAR_CREATE data:", err)
 		return helper.EndCall("Lo siento, tuvimos un error interno, por favor intentalo más tarde.")
 	}
+
+	payload.ClientPhone = fromNumber
 
 	respBody, err := calendar.CalendarCreate(&payload)
 	ctx := "CALENDAR_CREATE_ERROR"
@@ -102,12 +119,14 @@ func HandleCalendarCreate(callSid string, data json.RawMessage) (string, error) 
 	return helper.GatherCall(talkData.Message)
 }
 
-func HandleCalendarUpdate(callSid string, data json.RawMessage) (string, error) {
+func HandleCalendarUpdate(callSid, fromNumber string, data json.RawMessage) (string, error) {
 	var payload calendar.CalendarUpdateRequest
 	if err := json.Unmarshal(data, &payload); err != nil {
 		log.Println("Error unmarshaling CALENDAR_UPDATE data:", err)
 		return helper.EndCall("Lo siento, tuvimos un error interno, por favor intentalo más tarde.")
 	}
+
+	payload.ClientPhone = fromNumber
 
 	respBody, err := calendar.CalendarUpdate(&payload)
 	ctx := "CALENDAR_UPDATE_ERROR"
@@ -132,7 +151,7 @@ func HandleCalendarUpdate(callSid string, data json.RawMessage) (string, error) 
 	return helper.GatherCall(talkData.Message)
 }
 
-func HandleCalendarDelete(callSid string, data json.RawMessage) (string, error) {
+func HandleCalendarDelete(callSid, fromNumber string, data json.RawMessage) (string, error) {
 	var payload calendar.CalendarDeleteRequest
 	if err := json.Unmarshal(data, &payload); err != nil {
 		log.Println("Error unmarshaling CALENDAR_DELETE data:", err)
@@ -162,7 +181,7 @@ func HandleCalendarDelete(callSid string, data json.RawMessage) (string, error) 
 	return helper.GatherCall(talkData.Message)
 }
 
-func HandleEndCall(callSid string, data json.RawMessage) (string, error) {
+func HandleEndCall(callSid, fromNumber string, data json.RawMessage) (string, error) {
 	log.Printf("(%s): Finished call.\n", callSid)
 	var talkData TalkData
 	if err := json.Unmarshal(data, &talkData); err != nil {
@@ -171,4 +190,50 @@ func HandleEndCall(callSid string, data json.RawMessage) (string, error) {
 	}
 	session.End(callSid)
 	return helper.EndCall(talkData.Message)
+}
+
+func HandleCalendarSearch(callSid, fromNumber string, data json.RawMessage) (string, error) {
+	var payload calendar.CalendarSearchRequest
+	if err := json.Unmarshal(data, &payload); err != nil {
+		log.Println("Error unmarshaling CALENDAR_SEARCH data:", err)
+		return helper.EndCall("Lo siento, tuvimos un error interno, por favor intentalo más tarde.")
+	}
+
+	payload.ClientPhone = fromNumber
+
+	respBody, err := calendar.CalendarSearch(&payload)
+	ctx := "CALENDAR_SEARCH_ERROR"
+	if err == nil {
+		// Verificamos si la respuesta es una lista vacía "[]"
+		if string(respBody) == "[]" {
+			ctx = "CALENDAR_SEARCH_OK: No hay turnos agendados para este numero."
+		} else {
+			ctx = "CALENDAR_SEARCH_OK " + string(respBody)
+		}
+	} else {
+		ctx = "CALENDAR_SEARCH_ERROR " + err.Error()
+	}
+
+	contextResponse, ctxErr := session.Context(callSid, ctx)
+	if ctxErr != nil {
+		log.Println("Error context response:", ctxErr)
+		return helper.EndCall("Lo siento, tuvimos un error interno, por favor intentalo más tarde.")
+	}
+
+	if contextResponse.Action != "TALK" {
+		log.Printf("La IA decidió saltar directamente a: %s", contextResponse.Action)
+
+		nextHandler := GetActionHandler(contextResponse.Action)
+		if nextHandler != nil {
+			return nextHandler(callSid, fromNumber, contextResponse.Data)
+		}
+	}
+
+	var talkData TalkData
+	if err = json.Unmarshal(contextResponse.Data, &talkData); err != nil {
+		log.Println("Error unmarshaling TALK data:", err)
+		return helper.EndCall("Lo siento, no pude procesar tu solicitud.")
+	}
+
+	return helper.GatherCall(talkData.Message)
 }
