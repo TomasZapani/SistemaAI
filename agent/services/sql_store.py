@@ -52,16 +52,16 @@ def upsert_appointment(
     with _conn() as conn:
         conn.execute(
             """
-            INSERT INTO calendar_events (
+            INSERT INTO appointments (
                 id, google_event_id, summary, client_name, client_phone, 
                 start_time, end_time, description, status, sync_status
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
-                google_event_id=COALESCE(excluded.google_event_id, calendar_events.google_event_id),
+                google_event_id=COALESCE(excluded.google_event_id, appointments.google_event_id),
                 summary=excluded.summary,
-                client_name=COALESCE(excluded.client_name, calendar_events.client_name),
-                client_phone=COALESCE(excluded.client_phone, calendar_events.client_phone),
+                client_name=COALESCE(excluded.client_name, appointments.client_name),
+                client_phone=COALESCE(excluded.client_phone, appointments.client_phone),
                 start_time=excluded.start_time,
                 end_time=excluded.end_time,
                 description=excluded.description,
@@ -77,7 +77,7 @@ def mark_deleted(*, id: str) -> None:
     with _conn() as conn:
         conn.execute(
             """
-            UPDATE calendar_events
+            UPDATE appointments
             SET status='deleted', sync_status='pending', updated_at=datetime('now')
             WHERE id=?
             """,
@@ -91,7 +91,7 @@ def get_appointment(*, id: str) -> Optional[dict]:
             """
             SELECT id, google_event_id, summary, client_name, client_phone, start_time, 
                    end_time, description, status, sync_status, created_at, updated_at
-            FROM calendar_events
+            FROM appointments
             WHERE id=?
             """,
             (id,),
@@ -111,7 +111,7 @@ def list_events_sql(start_iso: str, end_iso: str) -> list[dict]:
         cur = conn.execute(
             """
             SELECT id, summary, client_name, start_time, end_time, description
-            FROM calendar_events
+            FROM appointments
             WHERE status != 'deleted'
               AND start_time >= ? 
               AND start_time <= ?
@@ -137,7 +137,7 @@ def list_events_by_phone_sql(phone: str) -> list[dict]:
         cur = conn.execute(
             """
             SELECT id, summary, start_time, end_time, description, status
-            FROM calendar_events
+            FROM appointments
             WHERE client_phone = ? AND status != 'deleted'
             ORDER BY start_time ASC
             """,
