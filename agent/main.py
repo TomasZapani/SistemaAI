@@ -7,8 +7,8 @@ import json
 
 from services.session import Session
 from services.google_calendar import GoogleCalendarClient
-from models import CalendarCreateRequest, CalendarDeleteRequest, CalendarListRequest, CalendarUpdateRequest, CalendarSearchRequest
-from services.sql_store import init_db, get_event, upsert_event, mark_deleted, list_events_sql, list_events_by_phone_sql
+from models import AppointmentCreateRequest, AppointmentDeleteRequest, AppointmentListRequest, AppointmentUpdateRequest, AppointmentSearchRequest
+from services.sql_store import init_db, get_appointment, upsert_appointment, mark_deleted, list_events_sql, list_events_by_phone_sql
 
 from utils.date_utils import get_day_range, format_google_date, localize_datetime, get_now_formatted
 
@@ -21,20 +21,19 @@ init_db()
 sessions: dict[str, Session] = {}
 
 
-@app.post("/api/calendar/list")
-async def calendar_list_endpoint(payload: CalendarListRequest):
+@app.post("/api/appointment/list")
+async def appointment_list_endpoint(payload: AppointmentListRequest):
     start_iso, end_iso = get_day_range(payload.day, TIMEZONE)
     return list_events_sql(start_iso, end_iso)
 
-
-@app.post("/api/calendar/create")
-async def calendar_create_endpoint(payload: CalendarCreateRequest):
+@app.post("/api/appointment/create")
+async def appointment_create_endpoint(payload: AppointmentCreateRequest):
     internal_id = str(uuid.uuid4())
     start_iso = localize_datetime(payload.start_time, TIMEZONE).isoformat()
     end_iso = localize_datetime(payload.end_time, TIMEZONE).isoformat()
     
-    upsert_event(
-        event_id=internal_id,
+    upsert_appointment(
+        id=internal_id,
         summary=payload.summary,
         client_name=payload.client_name,
         client_phone=payload.client_phone,
@@ -51,11 +50,13 @@ async def calendar_create_endpoint(payload: CalendarCreateRequest):
                 summary=f"{payload.summary}: {payload.client_name}",
                 start_rfc3339=start_iso,
                 end_rfc3339=end_iso,
-                description=f"Tel: {payload.client_phone}\n\n{payload.description}"
+                description=f"Nombre: {payload.client_name}\n\nTel: {payload.client_phone}\n\n{payload.description}"
             )
-            if google_resp.get("id"):
-                upsert_event(
-                    event_id=google_resp.get("id"),
+            g_id = google_resp.get("id")
+            if g_id:
+                upsert_appointment(
+                    id=internal_id, 
+                    google_event_id=g_id,
                     summary=payload.summary,
                     client_name=payload.client_name,
                     client_phone=payload.client_phone,
@@ -64,17 +65,16 @@ async def calendar_create_endpoint(payload: CalendarCreateRequest):
                     description=payload.description,
                     sync_status="synced"
                 )
-                
-                return {"status": "confirmed", "event_id": google_resp.get("id")}
+                return {"status": "confirmed", "id": internal_id, "synced": True}
         except Exception as e:
-            print(f"Error sincronizando Google (Plus): {e}")
+            print(f"Error sincronizando Google: {e}")
 
-    return {"status": "confirmed", "event_id": internal_id}
+    return {"status": "confirmed", "id": internal_id, "synced": False}
 
 
-@app.post("/api/calendar/update")
-async def calendar_update_endpoint(payload: CalendarUpdateRequest):
-    current = get_event(event_id=payload.event_id)
+@app.post("/api/appointment/update")
+async def appointment_update_endpoint(payload: AppointmentUpdateRequest):
+    current = get_appointment(id=payload.id)
     if not current:
         raise HTTPException(status_code=404, detail="Evento no encontrado")
 
@@ -86,52 +86,52 @@ async def calendar_update_endpoint(payload: CalendarUpdateRequest):
     updated_phone = payload.client_phone if payload.client_phone is not None else current['client_phone']
     updated_desc = payload.description if payload.description is not None else current['description']
 
-    upsert_event(
-        event_id=payload.event_id,
+    upsert_appointment(
+        id=payload.id,
         summary=updated_summary,
         client_name=updated_name,
         client_phone=updated_phone,
         start_time=start_iso,
         end_time=end_iso,
         description=updated_desc,
-        status="confirmed",
         sync_status="pending"
     )
 
-    if CALENDAR_CLIENT:
+    if CALENDAR_CLIENT and current.get('google_event_id'):
         try:
             CALENDAR_CLIENT.update_event(
-                event_id=payload.event_id,
+                event_id=current['google_event_id'], # Usamos el ID de Google para la API
                 summary=f"{updated_summary}: {updated_name}",
                 start_rfc3339=start_iso,
                 end_rfc3339=end_iso,
                 description=f"Tel: {updated_phone}\n{updated_desc}"
             )
             
-            upsert_event(event_id=payload.event_id, summary=updated_summary, client_name=updated_name, 
-                         client_phone=updated_phone, start_time=start_iso, end_time=end_iso, 
-                         description=updated_desc, sync_status="synced")
+            upsert_appointment(id=payload.id, summary=updated_summary, start_time=start_iso, 
+                         end_time=end_iso, sync_status="synced")
         except Exception as e:
             print(f"Error actualizando Google: {e}")
 
-    return {"status": "confirmed", "event_id": payload.event_id}
+    return {"status": "confirmed", "id": payload.id}
 
 
-@app.post("/api/calendar/delete")
-async def calendar_delete_endpoint(payload: CalendarDeleteRequest):
-    mark_deleted(event_id=payload.event_id)
+@app.post("/api/appointment/delete")
+async def appointment_delete_endpoint(payload: AppointmentDeleteRequest):
+    current = get_appointment(id=payload.id)
+    
+    mark_deleted(id=payload.id)
 
-    if CALENDAR_CLIENT:
+    if CALENDAR_CLIENT and current and current.get('google_event_id'):
         try:
-            CALENDAR_CLIENT.delete_event(payload.event_id)
+            CALENDAR_CLIENT.delete_event(current['google_event_id'])
         except Exception as e:
             print(f"No se pudo borrar en Google: {e}")
 
     return {"ok": True}
 
 
-@app.post("/api/calendar/search")
-async def calendar_search_endpoint(payload: CalendarSearchRequest):
+@app.post("/api/appointment/search")
+async def appointment_search_endpoint(payload: AppointmentSearchRequest):
     """
     Busca todos los turnos asociados a un número de teléfono.
     """
