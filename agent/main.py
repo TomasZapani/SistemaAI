@@ -6,12 +6,15 @@ import json
 from services.session import Session
 from services.google_calendar import GoogleCalendarClient
 from models import CalendarCreateRequest, CalendarDeleteRequest, CalendarListRequest, CalendarUpdateRequest
+from services.sql_store import init_db, upsert_event, mark_deleted
 
 from utils.date_utils import get_day_range, format_google_date, localize_datetime, get_now_formatted
 
 from config import CALENDAR_CLIENT, TIMEZONE, GEMINI_CLIENT
 
 app = FastAPI()
+
+init_db()
 
 sessions: dict[str, Session] = {}
 
@@ -70,6 +73,18 @@ async def calendar_create_endpoint(payload: CalendarCreateRequest):
     if response.get("status") != "confirmed":
         return {"status": "error"}
 
+    try:
+        upsert_event(
+            event_id=response.get("id"),
+            summary=payload.summary,
+            start_time=start_iso,
+            end_time=end_iso,
+            description=payload.description,
+            status="confirmed",
+        )
+    except Exception as e:
+        print("Error persisting event to SQL store:", e)
+
     return {"status": "confirmed", "event_id": response.get("id")}
 
 
@@ -98,12 +113,37 @@ async def calendar_update_endpoint(payload: CalendarUpdateRequest):
     if response.get("status") != "confirmed":
         return {"status": "error"}
 
+    try:
+        stored_start = start_iso
+        stored_end = end_iso
+        if stored_start is None:
+            stored_start = (response.get("start") or {}).get("dateTime") or (response.get("start") or {}).get("date")
+        if stored_end is None:
+            stored_end = (response.get("end") or {}).get("dateTime") or (response.get("end") or {}).get("date")
+
+        upsert_event(
+            event_id=response.get("id"),
+            summary=response.get("summary") or (payload.summary or ""),
+            start_time=stored_start or "",
+            end_time=stored_end or "",
+            description=response.get("description") if response.get("description") is not None else (payload.description or ""),
+            status="confirmed",
+        )
+    except Exception as e:
+        print("Error persisting updated event to SQL store:", e)
+
     return {"status": "confirmed", "event_id": response.get("id")}
 
 
 @app.post("/api/calendar/delete")
 async def calendar_delete_endpoint(payload: CalendarDeleteRequest):
     CALENDAR_CLIENT.delete_event(payload.event_id)
+
+    try:
+        mark_deleted(event_id=payload.event_id)
+    except Exception as e:
+        print("Error persisting deleted event to SQL store:", e)
+
     return {"ok": True}
 
 
