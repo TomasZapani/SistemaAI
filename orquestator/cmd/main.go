@@ -1,37 +1,24 @@
-package main
+from fastapi import FastAPI
+from dotenv import load_dotenv
+import uvicorn
+import os
 
-import (
-	"log"
-	"orquestator/actions"
-	"orquestator/handlers"
-	"os"
+from handlers import answer, gather, error
+from actions.registry import init_actions
 
-	"github.com/joho/godotenv"
+load_dotenv()
 
-	"github.com/gin-gonic/gin"
+app = FastAPI()
 
-	_ "github.com/go-sql-driver/mysql"
-)
+# Inicializar acciones
+init_actions()
 
-func main() {
-	// Load .env file
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file:", err)
-	}
+# Registrar handlers
+app.include_router(answer.router)
+app.include_router(gather.router)
+app.include_router(error.router)
 
-	actions.InitActions()
-
-	r := gin.Default()
-
-	// Handlers
-	r.POST("/answer", handlers.AnswerHandler)
-	r.POST("/gather", handlers.GatherHandler)
-	r.POST("/error", handlers.ErrorHandler)
-
-	ipListen := os.Getenv("HOST") + ":" + os.Getenv("PORT")
-
-	if err := r.Run(ipListen); err != nil {
-		log.Fatalf("failed to run server: %v", err)
-	}
-}
+if __name__ == "__main__":
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8080"))
+    uvicorn.run(app, host=host, port=port)
