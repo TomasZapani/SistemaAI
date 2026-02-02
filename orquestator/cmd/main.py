@@ -4,7 +4,7 @@ import uvicorn
 from actions.registry import init_actions
 from dotenv import load_dotenv
 from fastapi import FastAPI
-from handlers import answer, error, gather
+from routes import answer, error, gather
 
 load_dotenv()
 

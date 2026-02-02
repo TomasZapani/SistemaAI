@@ -7,6 +7,7 @@ from typing import Any, Optional
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
+
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 
@@ -44,10 +45,15 @@ class GoogleCalendarClient:
             )
 
         service = build(
-            "calendar", "v3", credentials=creds, cache_discovery=False
+            "calendar",
+            "v3",
+            credentials=creds,
+            cache_discovery=False
         )
         return GoogleCalendarClient(
-            service=service, calendar_id=calendar_id, timezone_str=tz
+            service=service,
+            calendar_id=calendar_id,
+            timezone_str=tz
         )
 
     def list_events(
@@ -124,7 +130,11 @@ class GoogleCalendarClient:
 
         return (
             self.service.events()
-            .update(calendarId=self.calendar_id, eventId=event_id, body=event)
+            .update(
+                calendarId=self.calendar_id,
+                eventId=event_id,
+                body=event
+            )
             .execute()
         )
 
