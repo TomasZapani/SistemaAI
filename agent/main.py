@@ -1,18 +1,20 @@
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-import uuid
 import json
+import uuid
 
-
-from services.session import Session
+from config import CALENDAR_CLIENT, GEMINI_CLIENT, TIMEZONE
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from models import (AppointmentCreateRequest, AppointmentDeleteRequest,
+                    AppointmentListRequest, AppointmentSearchRequest,
+                    AppointmentUpdateRequest)
+from pydantic import BaseModel
 from services.google_calendar import GoogleCalendarClient
-from models import AppointmentCreateRequest, AppointmentDeleteRequest, AppointmentListRequest, AppointmentUpdateRequest, AppointmentSearchRequest
-from services.sql_store import init_db, get_appointment, upsert_appointment, mark_deleted, list_events_sql, list_events_by_phone_sql
-
-from utils.date_utils import get_day_range, format_google_date, localize_datetime, get_now_formatted
-
-from config import CALENDAR_CLIENT, TIMEZONE, GEMINI_CLIENT
+from services.session import Session
+from services.sql_store import (get_appointment, init_db,
+                                list_events_by_phone_sql, list_events_sql,
+                                mark_deleted, upsert_appointment)
+from utils.date_utils import (format_google_date, get_day_range,
+                              get_now_formatted, localize_datetime)
 
 app = FastAPI()
 

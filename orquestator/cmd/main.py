@@ -1,10 +1,10 @@
-from fastapi import FastAPI
-from dotenv import load_dotenv
-import uvicorn
 import os
 
-from handlers import answer, gather, error
+import uvicorn
 from actions.registry import init_actions
+from dotenv import load_dotenv
+from fastapi import FastAPI
+from handlers import answer, error, gather
 
 load_dotenv()
 
