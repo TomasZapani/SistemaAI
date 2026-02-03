@@ -1,47 +1,51 @@
 import os
-import sqlite3
+import mysql.connector
 from contextlib import contextmanager
 from typing import Optional
 
 
-def _db_path() -> str:
-    return os.getenv("SQLITE_PATH", "agent.db")
+def _db_config() -> dict:
+    return {
+        "host": os.getenv("MYSQL_HOST", "localhost"),
+        "port": int(os.getenv("MYSQL_PORT", "3306")),
+        "user": os.getenv("MYSQL_USER", "root"),
+        "password": os.getenv("MYSQL_PASSWORD", ""),
+        "database": os.getenv("MYSQL_DATABASE", "agent_db"),
+    }
 
 
 @contextmanager
 def _conn():
-    conn = sqlite3.connect(_db_path())
+    conn = mysql.connector.connect(**_db_config())
+    cursor = conn.cursor()
     try:
-        yield conn
+        yield cursor
         conn.commit()
     finally:
+        cursor.close()
         conn.close()
 
 
 def init_db():
-    with _conn() as conn:
-        conn.execute("""
+    with _conn() as cursor:
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS appointments (
-                id TEXT PRIMARY KEY,
-                google_event_id TEXT UNIQUE,
+                id VARCHAR(255) PRIMARY KEY,
+                google_event_id VARCHAR(255) UNIQUE,
                 summary TEXT NOT NULL,
-                client_name TEXT,
-                client_phone TEXT,
-                start_time TEXT NOT NULL,
-                end_time TEXT NOT NULL,
+                client_name VARCHAR(255),
+                client_phone VARCHAR(50),
+                start_time DATETIME NOT NULL,
+                end_time DATETIME NOT NULL,
                 description TEXT,
-                status TEXT NOT NULL DEFAULT 'confirmed',
-                sync_status TEXT DEFAULT 'pending',
-                created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-            )
+                status VARCHAR(50) NOT NULL DEFAULT 'confirmed',
+                sync_status VARCHAR(50) DEFAULT 'pending',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_phone (client_phone),
+                INDEX idx_start_time (start_time)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """)
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_phone ON appointments(client_phone)"
-        )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_start_time ON appointments(start_time)"
-        )
 
 
 def upsert_appointment(
@@ -57,26 +61,27 @@ def upsert_appointment(
     status: str = "confirmed",
     sync_status: str = "pending"
 ) -> None:
-    with _conn() as conn:
-        conn.execute(
+    with _conn() as cursor:
+        cursor.execute(
             """
             INSERT INTO appointments (
                 id, google_event_id, summary,
                 client_name, client_phone, start_time,
-                end_time, description, status, sync_status
+                end_time, description, status, sync_status,
+                created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                google_event_id=COALESCE(excluded.google_event_id, appointments.google_event_id),
-                summary=excluded.summary,
-                client_name=COALESCE(excluded.client_name, appointments.client_name),
-                client_phone=COALESCE(excluded.client_phone, appointments.client_phone),
-                start_time=excluded.start_time,
-                end_time=excluded.end_time,
-                description=excluded.description,
-                status=excluded.status,
-                sync_status=excluded.sync_status,
-                updated_at=datetime('now')
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+            ON DUPLICATE KEY UPDATE
+                google_event_id=COALESCE(VALUES(google_event_id), google_event_id),
+                summary=VALUES(summary),
+                client_name=COALESCE(VALUES(client_name), client_name),
+                client_phone=COALESCE(VALUES(client_phone), client_phone),
+                start_time=VALUES(start_time),
+                end_time=VALUES(end_time),
+                description=VALUES(description),
+                status=VALUES(status),
+                sync_status=VALUES(sync_status),
+                updated_at=NOW()
             """,
             (
                 id,
@@ -95,14 +100,14 @@ def upsert_appointment(
 
 def mark_deleted(*, id: str) -> None:
     """Marca como borrado usando el ID interno."""
-    with _conn() as conn:
-        conn.execute(
+    with _conn() as cursor:
+        cursor.execute(
             """
             UPDATE appointments
             SET status='deleted',
                 sync_status='pending',
-                updated_at=datetime('now')
-            WHERE id=?
+                updated_at=NOW()
+            WHERE id=%s
             """,
             (id,),
         )
@@ -110,19 +115,19 @@ def mark_deleted(*, id: str) -> None:
 
 def get_appointment(*, id: str) -> Optional[dict]:
     """Obtiene un evento por su ID interno."""
-    with _conn() as conn:
-        cur = conn.execute(
+    with _conn() as cursor:
+        cursor.execute(
             """
             SELECT id, google_event_id, summary, client_name,
                    client_phone, start_time,
                    end_time, description, status, sync_status,
                    created_at, updated_at
             FROM appointments
-            WHERE id=?
+            WHERE id=%s
             """,
             (id,),
         )
-        row = cur.fetchone()
+        row = cursor.fetchone()
         if row is None:
             return None
         return {
@@ -142,14 +147,14 @@ def get_appointment(*, id: str) -> Optional[dict]:
 
 
 def list_events_sql(start_iso: str, end_iso: str) -> list[dict]:
-    with _conn() as conn:
-        cur = conn.execute(
+    with _conn() as cursor:
+        cursor.execute(
             """
             SELECT id, summary, client_name, start_time, end_time, description
             FROM appointments
             WHERE status != 'deleted'
-              AND start_time >= ? 
-              AND start_time <= ?
+              AND start_time >= %s
+              AND start_time <= %s
             ORDER BY start_time ASC
             """,
             (start_iso, end_iso),
@@ -164,17 +169,17 @@ def list_events_sql(start_iso: str, end_iso: str) -> list[dict]:
                 "description": row[5],
                 "status": "Turno ocupado",
             }
-            for row in cur.fetchall()
+            for row in cursor.fetchall()
         ]
 
 
 def list_events_by_phone_sql(phone: str) -> list[dict]:
-    with _conn() as conn:
-        cur = conn.execute(
+    with _conn() as cursor:
+        cursor.execute(
             """
             SELECT id, summary, start_time, end_time, description, status
             FROM appointments
-            WHERE client_phone = ? AND status != 'deleted'
+            WHERE client_phone = %s AND status != 'deleted'
             ORDER BY start_time ASC
             """,
             (phone,),
@@ -188,5 +193,5 @@ def list_events_by_phone_sql(phone: str) -> list[dict]:
                 "description": row[4],
                 "status": row[5],
             }
-            for row in cur.fetchall()
+            for row in cursor.fetchall()
         ]
