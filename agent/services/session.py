@@ -1,13 +1,15 @@
+import os
+
+from config import SYSTEM_CONTEXT
 from google import genai
 from google.genai import types
-import os
-from config import SYSTEM_CONTEXT
+
 
 class Session:
     def __init__(self, gemini_client: genai.Client):
         self.gemini_client = gemini_client
         self.messages = []
-    
+
     def add_message(self, role: str, message: str):
         """
         Añade un mensaje dentro de la sesión.
@@ -16,7 +18,12 @@ class Session:
             role (str): Rol del mensaje user/model.
             message (str): Mensaje que se añadira.
         """
-        self.messages.append({"role": role, "parts": [{"text": message}]})
+        self.messages.append(
+            {
+                "role": role,
+                "parts": [{"text": message}],
+            }
+        )
 
     def add_context(self, context: str):
         """
@@ -25,7 +32,12 @@ class Session:
         Args:
             context (str): Mensaje de contexto.
         """
-        self.messages.append({"role": "user", "parts": [{"text": f"[SYSTEM CONTEXT] {context}"}]})
+        self.messages.append(
+            {
+                "role": "user",
+                "parts": [{"text": f"[SYSTEM CONTEXT] {context}"}],
+            }
+        )
 
     def generate(self):
         """
@@ -40,7 +52,7 @@ class Session:
                 system_instruction=SYSTEM_CONTEXT,
                 response_mime_type="application/json",
             ),
-            contents=self.messages
+            contents=self.messages,
         )
 
         self.add_message("model", message.text)
