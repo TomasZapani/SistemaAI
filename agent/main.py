@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 import uvicorn
 from agent.services.appointment_service import init_db
-from routes import appointment_route, session_route
+from routes import appointment_route, session_route, client_route
 
 
 app = FastAPI()
@@ -11,6 +11,7 @@ API_PREFIX = "/api"
 
 app.include_router(appointment_route.router, prefix=API_PREFIX)
 app.include_router(session_route.router, prefix=API_PREFIX)
+app.include_router(client_route.router, prefix=API_PREFIX)
 
 
 if __name__ == "__main__":

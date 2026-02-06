@@ -15,14 +15,14 @@ def _db_config() -> dict:
 
 @contextmanager
 def conn():
-    conn = mysql.connector.connect(**_db_config())
-    cursor = conn.cursor()
+    connection = mysql.connector.connect(**_db_config())
+    cursor = connection.cursor(buffered=True)
     try:
         yield cursor
-        conn.commit()
+        connection.commit()
     finally:
         cursor.close()
-        conn.close()
+        connection.close()
 
 
 def init_db():
@@ -35,13 +35,15 @@ def init_db():
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_phone (phone)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+        
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS appointments (
                 id BINARY(16) PRIMARY KEY DEFAULT (UUID_TO_BIN(UUID())),
                 google_event_id VARCHAR(255) UNIQUE,
                 summary TEXT NOT NULL,
-                client_id VARCHAR(255),
+                client_id BINARY(16),
                 start_time DATETIME NOT NULL,
                 end_time DATETIME NOT NULL,
                 description TEXT,
@@ -52,5 +54,6 @@ def init_db():
                 INDEX idx_client_id (client_id),
                 INDEX idx_start_time (start_time),
                 FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL ON UPDATE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """)
+

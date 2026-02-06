@@ -6,7 +6,7 @@ from models import (
     AppointmentListRequest,
     AppointmentUpdateRequest
 )
-from services.sql_store import (
+from agent.services.appointment_service import (
     get_appointment,
     list_events_by_phone_sql,
     list_events_sql,
