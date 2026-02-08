@@ -3,7 +3,18 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import uuid
 import json
+import logging
 
+# Configurar logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('agent.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 from services.session import Session
 from services.google_calendar import GoogleCalendarClient
@@ -186,7 +197,47 @@ async def send_endpoint(call_sid: str, message: str):
     return json.loads(response)
 
 
+from training.capture_conversations import ConversationCapture
+
 @app.delete("/api/session/end")
 async def end_endpoint(call_sid: str):
-    """Termina y elimina la sesion"""
-    sessions.pop(call_sid, None)
+    """Termina y elimina la sesion. Si fue exitosa, la captura."""
+    if call_sid in sessions:
+        session = sessions[call_sid]
+        
+        # Verificar heurística de éxito: ¿Hubo un CREATE_OK en los mensajes?
+        # Buscamos en el historial si el sistema confirmó una cita
+        was_successful = any(
+            "[SYSTEM CONTEXT]" in str(msg) and "APPOINTMENT_CREATE_OK" in str(msg)
+            for msg in session.messages
+        )
+        
+        if was_successful:
+            try:
+                capture = ConversationCapture()
+                # Etiquetas automáticas basadas en el contenido
+                tags = ["auto_captured", "appointment_created"]
+                capture.capture_from_session(session, quality_score=None, tags=tags)
+                print(f"Session {call_sid} captured successfully.")
+            except Exception as e:
+                print(f"Error capturing session {call_sid}: {e}")
+
+        sessions.pop(call_sid, None)
+
+
+@app.get("/api/session/stats/{call_sid}")
+async def session_stats_endpoint(call_sid: str):
+    """Obtiene estadísticas de una sesión activa"""
+    if call_sid not in sessions:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    
+    return sessions[call_sid].get_stats()
+
+
+@app.get("/api/sessions/list")
+async def sessions_list_endpoint():
+    """Lista todas las sesiones activas con sus stats"""
+    return {
+        call_sid: session.get_stats() 
+        for call_sid, session in sessions.items()
+    }

@@ -4,3 +4,10 @@ __pycache__/
 .idea/
 credentials.json
 *.db
+
+# Virtual environments
+agent/AI/
+
+# Google credentials
+sistemaai-*.json
+client_secret_*.json
