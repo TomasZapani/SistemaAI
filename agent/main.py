@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 import uvicorn
-from agent.services.appointment_service import init_db
+from services.db_service import init_db
 from routes import appointment_route, session_route, client_route
 
 

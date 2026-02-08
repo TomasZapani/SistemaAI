@@ -1,5 +1,5 @@
 from typing import Optional
-from db_service import conn
+from services.db_service import conn
 
 
 def upsert_client(
