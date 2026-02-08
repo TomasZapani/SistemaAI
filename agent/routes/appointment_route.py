@@ -6,7 +6,7 @@ from models import (
     AppointmentListRequest,
     AppointmentUpdateRequest
 )
-from agent.services.appointment_service import (
+from services.appointment_service import (
     get_appointment,
     list_events_by_phone_sql,
     list_events_sql,
@@ -19,7 +19,7 @@ from utils.date_utils import (
 )
 
 router = APIRouter(
-    prefix="appointment",
+    prefix="/appointment",
     tags=["Appointment"]
 )
 
