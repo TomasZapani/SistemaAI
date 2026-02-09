@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 import uvicorn
-from services.db_service import init_db
 from routes import appointment_route, session_route, client_route
 
 
@@ -37,7 +36,6 @@ API para la gestión integral de turnos y clientes con inteligencia artificial.
         "name": "Sistema de Turnos",
     },
 )
-init_db()
 
 API_PREFIX = "/api"
 
@@ -49,6 +47,6 @@ app.include_router(client_route.router, prefix=API_PREFIX)
 if __name__ == "__main__":
     uvicorn.run(
         app,
-        host="0.0.0.0",
+        host="127.0.0.1",
         port=8000
     )
