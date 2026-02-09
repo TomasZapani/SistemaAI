@@ -7,7 +7,7 @@ from utils.date_utils import get_now_formatted
 
 sessions: dict[str, Session] = {}
 router = APIRouter(
-    prefix="session",
+    prefix="/session",
     tags=["Session"]
 )
 
