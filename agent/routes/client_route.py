@@ -1,7 +1,7 @@
 import uuid
 from fastapi import APIRouter, HTTPException
 from models import ClientUpdateRequest
-from services.users_service import (
+from services.client_service import (
     search_clients,
     upsert_client,
     get_client,
@@ -71,21 +71,21 @@ async def get_client_with_appointments_endpoint(id: str):
     return client
 
 
-@router.post("/update")
-async def update_client_endpoint(payload: ClientUpdateRequest):
+@router.put("/update/{id}")
+async def update_client_endpoint(id: str, name: str, phone: str):
     """Actualiza un cliente existente."""
-    current = get_client(id=payload.id)
+    current = get_client(id=id)
     if not current:
         raise HTTPException(
             status_code=404,
             detail="Cliente no encontrado"
         )
     
-    updated_name = payload.name if payload.name is not None else current["name"]
-    updated_phone = payload.phone if payload.phone is not None else current["phone"]
+    updated_name = name if name is not None else current["name"]
+    updated_phone = phone if phone is not None else current["phone"]
     
     result = upsert_client(
-        id=payload.id,
+        id=id,
         name=updated_name,
         phone=updated_phone
     )
