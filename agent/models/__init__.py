@@ -1,7 +1,7 @@
-from models.appointment_list import AppointmentListRequest
-from models.appointment_create import AppointmentCreateRequest
-from models.appointment_update import AppointmentUpdateRequest
-from models.client_update import ClientUpdateRequest
+from agent.models.appointment_list import AppointmentListRequest
+from agent.models.appointment_create import AppointmentCreateRequest
+from agent.models.appointment_update import AppointmentUpdateRequest
+from agent.models.client_update import ClientUpdateRequest
 
 
 __all__ = [

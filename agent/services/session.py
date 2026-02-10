@@ -1,6 +1,6 @@
 import os
 
-from config import SYSTEM_CONTEXT
+from agent.config import SYSTEM_CONTEXT
 from google import genai
 from google.genai import types
 

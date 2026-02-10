@@ -1,7 +1,6 @@
 import uuid
 from fastapi import APIRouter, HTTPException
-from models import ClientUpdateRequest
-from services.client_service import (
+from agent.services.client_service import (
     search_clients,
     upsert_client,
     get_client,

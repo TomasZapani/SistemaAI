@@ -3,7 +3,7 @@ import os
 import pytz
 from dotenv import load_dotenv
 from google import genai
-from services.google_calendar import GoogleCalendarClient
+from agent.services.google_calendar import GoogleCalendarClient
 
 
 def load_text_file(filename: str, default: str = "") -> str:
