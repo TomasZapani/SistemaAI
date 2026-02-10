@@ -1,8 +1,8 @@
 import json
 from fastapi import APIRouter, HTTPException
-from services.session import Session
-from config import GEMINI_CLIENT
-from utils.date_utils import get_now_formatted
+from agent.services.session import Session
+from agent.config import GEMINI_CLIENT
+from agent.utils.date_utils import get_now_formatted
 
 
 sessions: dict[str, Session] = {}

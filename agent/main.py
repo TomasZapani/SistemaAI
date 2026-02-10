@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 import uvicorn
-from routes import appointment_route, session_route, client_route
+from agent.routes import appointment_route, session_route, client_route
 
 
 app = FastAPI(
