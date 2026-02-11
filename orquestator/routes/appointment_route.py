@@ -1,19 +1,19 @@
 import uuid
-from agent.config import CALENDAR_CLIENT, TIMEZONE
+from orquestator.config import CALENDAR_CLIENT, TIMEZONE
 from fastapi import APIRouter, HTTPException
-from agent.models import (
+from orquestator.models import (
     AppointmentCreateRequest,
     AppointmentListRequest,
     AppointmentUpdateRequest
 )
-from agent.services.appointment_service import (
+from orquestator.services.appointment_service import (
     get_appointment,
     list_events_by_phone_sql,
     list_events_sql,
     mark_deleted, 
     upsert_appointment
 )
-from agent.utils.date_utils import (
+from orquestator.utils.date_utils import (
     get_day_range,
     localize_datetime
 )
