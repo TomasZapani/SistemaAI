@@ -15,7 +15,7 @@ load_dotenv()
 
 app = FastAPI()
 
-API_PREFIX = "api/v1"
+API_PREFIX = "/api/v1"
 
 # Inicializar acciones
 init_actions()

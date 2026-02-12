@@ -2,9 +2,8 @@ import json
 import logging
 import uuid
 from typing import Any, Dict
-from actions.schemas import TalkData
-from api.session import add_context
-from helper.twiml import end_call, gather_call
+from orquestator.actions.schemas import TalkData
+from orquestator.helper.twiml import end_call, gather_call
 
 from orquestator.config import CALENDAR_CLIENT, TIMEZONE
 from orquestator.services.appointment_service import (

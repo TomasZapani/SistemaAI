@@ -1,6 +1,6 @@
 import os
 import pytz
-from services.google_calendar import GoogleCalendarClient
+from orquestator.services.google_calendar import GoogleCalendarClient
 
 
 TIMEZONE = pytz.timezone(os.getenv("GOOGLE_CALENDAR_TIMEZONE", "UTC"))
