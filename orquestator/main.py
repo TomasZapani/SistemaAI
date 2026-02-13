@@ -8,7 +8,8 @@ from orquestator.routes import (
     error,
     gather,
     client_route,
-    appointment_route
+    appointment_route,
+    google_calendar_route
 )
 
 load_dotenv()
@@ -25,6 +26,7 @@ app.include_router(gather.router, prefix=API_PREFIX)
 app.include_router(error.router, prefix=API_PREFIX)
 app.include_router(client_route.router, prefix=API_PREFIX)
 app.include_router(appointment_route.router, prefix=API_PREFIX)
+app.include_router(google_calendar_route.router, prefix=API_PREFIX)
 
 if __name__ == "__main__":
     host = os.getenv("HOST", "127.0.0.1")
