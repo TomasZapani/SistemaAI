@@ -39,18 +39,17 @@ class DatasetBuilder:
         
         for msg in session_messages:
             role = msg.get("role")
-            text = msg.get("parts", [{}])[0].get("text", "")
+            text = msg.get("content", "")
             
-            # Filtrar contexto del sistema
-            if "[SYSTEM CONTEXT]" in text:
+            # Filtrar mensajes de sistema
+            if role == "system":
                 continue
             
             # Mapear roles
-            if role in ["user", "model"]:
-                cleaned_messages.append({
-                    "role": role,
-                    "content": text
-                })
+            if role == "user":
+                cleaned_messages.append({"role": "user", "content": text})
+            elif role == "assistant":
+                cleaned_messages.append({"role": "assistant", "content": text})
         
         if cleaned_messages:
             self.add_conversation(cleaned_messages, metadata)
@@ -88,7 +87,7 @@ class DatasetBuilder:
             "total_messages": 0,
             "avg_messages_per_conversation": 0,
             "user_messages": 0,
-            "model_messages": 0,
+            "assistant_messages": 0,
             "errors": []
         }
         
@@ -99,14 +98,14 @@ class DatasetBuilder:
             for msg in messages:
                 if msg["role"] == "user":
                     stats["user_messages"] += 1
-                elif msg["role"] == "model":
-                    stats["model_messages"] += 1
+                elif msg["role"] == "assistant":
+                    stats["assistant_messages"] += 1
                 
                 # Validaciones
                 if not msg.get("content"):
                     stats["errors"].append(f"Conversación {i}: mensaje vacío")
                 
-                if msg["role"] not in ["user", "model"]:
+                if msg["role"] not in ["user", "assistant"]:
                     stats["errors"].append(f"Conversación {i}: rol inválido '{msg['role']}'")
         
         if stats["total_conversations"] > 0:
@@ -125,7 +124,7 @@ class DatasetBuilder:
         print(f"Mensajes totales: {stats['total_messages']}")
         print(f"Promedio mensajes/conversación: {stats['avg_messages_per_conversation']:.1f}")
         print(f"Mensajes de usuario: {stats['user_messages']}")
-        print(f"Mensajes del modelo: {stats['model_messages']}")
+        print(f"Mensajes del asistente: {stats['assistant_messages']}")
         
         if stats['errors']:
             print(f"\n Errores encontrados: {len(stats['errors'])}")
@@ -143,33 +142,33 @@ def create_example_dataset():
     # Ejemplo 1: Agendar cita
     builder.add_conversation([
         {"role": "user", "content": "Hola, necesito agendar una cita"},
-        {"role": "model", "content": "¡Hola! Claro, con gusto te ayudo. ¿Para qué fecha te gustaría agendar?"},
+        {"role": "assistant", "content": "¡Hola! Claro, con gusto te ayudo. ¿Para qué fecha te gustaría agendar?"},
         {"role": "user", "content": "Para el 15 de febrero a las 3 de la tarde"},
-        {"role": "model", "content": "Perfecto, ¿a nombre de quién será la cita?"},
+        {"role": "assistant", "content": "Perfecto, ¿a nombre de quién será la cita?"},
         {"role": "user", "content": "Carlos Mendez"},
-        {"role": "model", "content": "¡Listo Carlos! Tu cita está confirmada para el 15 de febrero a las 3:00 PM. Te esperamos."}
+        {"role": "assistant", "content": "¡Listo Carlos! Tu cita está confirmada para el 15 de febrero a las 3:00 PM. Te esperamos."}
     ], metadata={"topic": "agendar_cita", "quality": "high"})
     
     # Ejemplo 2: Consultar disponibilidad
     builder.add_conversation([
         {"role": "user", "content": "¿Tienen disponibilidad mañana?"},
-        {"role": "model", "content": "Déjame revisar. ¿Qué horario prefieres, mañana o tarde?"},
+        {"role": "assistant", "content": "Déjame revisar. ¿Qué horario prefieres, mañana o tarde?"},
         {"role": "user", "content": "Por la mañana"},
-        {"role": "model", "content": "Tenemos disponible a las 9:00 AM, 10:30 AM y 11:00 AM. ¿Cuál te viene mejor?"},
+        {"role": "assistant", "content": "Tenemos disponible a las 9:00 AM, 10:30 AM y 11:00 AM. ¿Cuál te viene mejor?"},
         {"role": "user", "content": "Las 10:30 está bien"},
-        {"role": "model", "content": "Perfecto. ¿A nombre de quién?"},
+        {"role": "assistant", "content": "Perfecto. ¿A nombre de quién?"},
         {"role": "user", "content": "María González"},
-        {"role": "model", "content": "¡Confirmado María! Tu cita es mañana a las 10:30 AM. Nos vemos."}
+        {"role": "assistant", "content": "¡Confirmado María! Tu cita es mañana a las 10:30 AM. Nos vemos."}
     ], metadata={"topic": "consultar_disponibilidad", "quality": "high"})
     
     # Ejemplo 3: Cancelar cita
     builder.add_conversation([
         {"role": "user", "content": "Necesito cancelar mi cita"},
-        {"role": "model", "content": "Entendido. ¿Para qué fecha tenías agendada tu cita?"},
+        {"role": "assistant", "content": "Entendido. ¿Para qué fecha tenías agendada tu cita?"},
         {"role": "user", "content": "El 20 de enero"},
-        {"role": "model", "content": "Tu cita del 20 de enero ha sido cancelada exitosamente. ¿Deseas reagendar para otra fecha?"},
+        {"role": "assistant", "content": "Tu cita del 20 de enero ha sido cancelada exitosamente. ¿Deseas reagendar para otra fecha?"},
         {"role": "user", "content": "No, por ahora no. Gracias"},
-        {"role": "model", "content": "Perfecto, cualquier cosa estamos a tu disposición. ¡Que tengas buen día!"}
+        {"role": "assistant", "content": "Perfecto, cualquier cosa estamos a tu disposición. ¡Que tengas buen día!"}
     ], metadata={"topic": "cancelar_cita", "quality": "high"})
     
     builder.print_stats()

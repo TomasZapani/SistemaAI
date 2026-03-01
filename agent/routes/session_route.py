@@ -1,7 +1,6 @@
 import json
 from fastapi import APIRouter, HTTPException
 from agent.services.session import Session
-from agent.config import GEMINI_CLIENT
 from agent.utils.date_utils import get_now_formatted
 
 
@@ -16,7 +15,7 @@ router = APIRouter(
 async def start_endpoint(call_sid: str):
     """Crea una nueva sesion y devuelve el mensaje de bienvenida"""
     if call_sid not in sessions:
-        sessions[call_sid] = Session(GEMINI_CLIENT)
+        sessions[call_sid] = Session()
     
     session = sessions[call_sid]
     now = get_now_formatted()

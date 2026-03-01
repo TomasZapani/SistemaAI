@@ -1,28 +1,25 @@
-import os
+import ollama
 
-from agent.config import SYSTEM_CONTEXT
-from google import genai
-from google.genai import types
+from agent.config import BUSINESS_CONTEXT, OLLAMA_MODEL, OLLAMA_HOST
 
 
 class Session:
-    def __init__(self, gemini_client: genai.Client):
-        self.gemini_client = gemini_client
-        self.messages = []
+    def __init__(self):
+        self.client = ollama.Client(host=OLLAMA_HOST)
+        self.messages = [
+            {"role": "system", "content": BUSINESS_CONTEXT}
+        ]
 
     def add_message(self, role: str, message: str):
         """
         Añade un mensaje dentro de la sesión.
 
         Args:
-            role (str): Rol del mensaje user/model.
+            role (str): Rol del mensaje user/assistant.
             message (str): Mensaje que se añadira.
         """
         self.messages.append(
-            {
-                "role": role,
-                "parts": [{"text": message}],
-            }
+            {"role": role, "content": message}
         )
 
     def add_context(self, context: str):
@@ -33,10 +30,7 @@ class Session:
             context (str): Mensaje de contexto.
         """
         self.messages.append(
-            {
-                "role": "user",
-                "parts": [{"text": f"[SYSTEM CONTEXT] {context}"}],
-            }
+            {"role": "system", "content": context}
         )
 
     def generate(self):
@@ -46,15 +40,13 @@ class Session:
         Returns:
             str: Mensaje generado por el modelo.
         """
-        message = self.gemini_client.models.generate_content(
-            model=os.getenv("GEMINI_MODEL"),
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_CONTEXT,
-                response_mime_type="application/json",
-            ),
-            contents=self.messages,
+        response = self.client.chat(
+            model=OLLAMA_MODEL,
+            messages=self.messages,
+            format="json",
         )
 
-        self.add_message("model", message.text)
+        assistant_message = response.message.content
+        self.add_message("assistant", assistant_message)
 
-        return message.text
+        return assistant_message
