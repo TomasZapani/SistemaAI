@@ -5,3 +5,5 @@ __pycache__/
 credentials.json
 *.db
 sistemaai-486717-d1bad29d71b6.json
+Plan_Tests.ipynb
+.ipynb_checkpoints/
