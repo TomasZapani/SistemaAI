@@ -43,7 +43,6 @@ class Session:
         response = self.client.chat(
             model=OLLAMA_MODEL,
             messages=self.messages,
-            format="json",
         )
 
         assistant_message = response.message.content

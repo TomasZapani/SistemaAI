@@ -2,9 +2,6 @@ import os
 
 import pytz
 from dotenv import load_dotenv
-from agent.services.google_calendar import GoogleCalendarClient
-
-
 def load_text_file(filename: str, default: str = "") -> str:
     if not os.path.exists(filename):
         print(f"Warning: Missing file '{filename}'. Using default values.")
@@ -23,10 +20,6 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5")
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 TIMEZONE = pytz.timezone(os.getenv("GOOGLE_CALENDAR_TIMEZONE", "UTC"))
 
-try:
-    CALENDAR_CLIENT = GoogleCalendarClient.from_env()
-except Exception:
-    CALENDAR_CLIENT = None
 
 # Carga del contexto de negocio
 _base_dir = os.path.dirname(os.path.abspath(__file__))
