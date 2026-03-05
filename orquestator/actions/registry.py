@@ -1,6 +1,6 @@
 import logging
 from typing import Any, Callable, Dict
-from actions.handlers import (
+from orquestator.actions.handlers import (
         handle_appointment_create,
         handle_appointment_delete,
         handle_appointment_list,
