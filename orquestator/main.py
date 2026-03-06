@@ -2,7 +2,7 @@ import os
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
-from routes import (
+from orquestator.routes import (
     client_route,
     appointment_route,
     google_calendar_route,

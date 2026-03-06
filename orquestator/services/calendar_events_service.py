@@ -1,5 +1,5 @@
 from typing import Optional
-from supabase_conn.connection import supabase
+from orquestator.supabase_conn.connection import supabase
 
 
 def upsert_calendar_event(

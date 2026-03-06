@@ -1,7 +1,7 @@
-from models.appointment_list import AppointmentListRequest
-from models.appointment_create import AppointmentCreateRequest
-from models.appointment_update import AppointmentUpdateRequest
-from models.client_update import ClientUpdateRequest
+from orquestator.models.appointment_list import AppointmentListRequest
+from orquestator.models.appointment_create import AppointmentCreateRequest
+from orquestator.models.appointment_update import AppointmentUpdateRequest
+from orquestator.models.client_update import ClientUpdateRequest
 
 
 __all__ = [
