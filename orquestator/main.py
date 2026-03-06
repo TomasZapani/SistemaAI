@@ -1,12 +1,8 @@
 import os
 import uvicorn
-from actions.registry import init_actions
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from routes import (
-    answer,
-    error,
-    gather,
     client_route,
     appointment_route,
     google_calendar_route,
@@ -19,12 +15,7 @@ app = FastAPI()
 
 API_PREFIX = "/api/v1"
 
-# Inicializar acciones
-init_actions()
 
-app.include_router(answer.router, prefix=API_PREFIX)
-app.include_router(gather.router, prefix=API_PREFIX)
-app.include_router(error.router, prefix=API_PREFIX)
 app.include_router(client_route.router, prefix=API_PREFIX)
 app.include_router(appointment_route.router, prefix=API_PREFIX)
 app.include_router(google_calendar_route.router, prefix=API_PREFIX)

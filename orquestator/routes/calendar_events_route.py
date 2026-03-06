@@ -1,95 +1,18 @@
 from config import CALENDAR_CLIENT
 from fastapi import APIRouter, HTTPException
-from models.calendar_events import (
-    CalendarEventCreateRequest,
-    CalendarEventUpdateRequest
-)
 from services.calendar_events_service import (
     delete_calendar_event,
     get_calendar_event,
     get_calendar_event_by_appointment_id,
     get_calendar_event_by_external_id,
     list_pending_sync,
-    update_external_event_id,
-    update_sync_status,
-    upsert_calendar_event
 )
+
 
 router = APIRouter(
     prefix="/calendar-event",
     tags=["Calendar Event"]
 )
-
-
-@router.post("/create")
-async def calendar_event_create_endpoint(payload: CalendarEventCreateRequest):
-    """Crea un evento de calendario vinculado a una cita existente."""
-    calendar_event = upsert_calendar_event(
-        appointment_id=payload.appointment_id,
-        summary=payload.summary,
-        description=payload.description,
-        sync_status="pending"
-    )
-    calendar_event_id = calendar_event["id"]
-
-    if CALENDAR_CLIENT and payload.start_time and payload.end_time:
-        try:
-            google_resp = CALENDAR_CLIENT.create_event(
-                summary=payload.summary,
-                start_rfc3339=payload.start_time,
-                end_rfc3339=payload.end_time,
-                description=payload.description or "",
-            )
-
-            g_id = google_resp.get("id")
-            if g_id:
-                update_external_event_id(id=calendar_event_id, external_event_id=g_id)
-                return {
-                    "status": "created",
-                    "id": calendar_event_id,
-                    "synced": True
-                }
-        except Exception as e:
-            print(f"Error sincronizando Google: {e}")
-
-    return {"status": "created", "id": calendar_event_id, "synced": False}
-
-
-@router.post("/update")
-async def calendar_event_update_endpoint(payload: CalendarEventUpdateRequest):
-    """Actualiza un evento de calendario existente."""
-    current = get_calendar_event(id=payload.id)
-    if not current:
-        raise HTTPException(status_code=404, detail="Evento de calendario no encontrado")
-
-    updated_summary = payload.summary if payload.summary is not None else current["summary"]
-    updated_desc = payload.description if payload.description is not None else current.get("description")
-
-    upsert_calendar_event(
-        id=payload.id,
-        appointment_id=current["appointment_id"],
-        external_event_id=current.get("external_event_id"),
-        summary=updated_summary,
-        description=updated_desc,
-        sync_status="pending"
-    )
-
-    if CALENDAR_CLIENT and current.get("external_event_id"):
-        try:
-            appt = current.get("appointment") or {}
-            CALENDAR_CLIENT.update_event(
-                event_id=current["external_event_id"],
-                summary=updated_summary,
-                start_rfc3339=appt.get("start_time"),
-                end_rfc3339=appt.get("end_time"),
-                description=updated_desc or ""
-            )
-            update_sync_status(id=payload.id, sync_status="synced")
-
-        except Exception as e:
-            print(f"Error actualizando Google: {e}")
-
-    return {"status": "updated", "id": payload.id}
 
 
 @router.post("/delete")
