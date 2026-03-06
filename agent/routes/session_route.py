@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException
 from agent.services.session import Session
 from agent.utils.date_utils import get_now_formatted
-
+import json
 
 sessions: dict[str, Session] = {}
 router = APIRouter(
@@ -24,7 +24,7 @@ async def start_endpoint(call_sid: str):
     )
     response = session.generate()
 
-    return json.loads(response)
+    return {"response": response}
 
 
 @router.post("/context")
@@ -40,9 +40,9 @@ async def context_endpoint(call_sid: str, context: str):
     session.add_context(context)
     response = session.generate()
 
-    print(json.loads(response))
+    print(response)
 
-    return json.loads(response)
+    return {"response": response}
 
 
 @router.post("/send")
@@ -58,7 +58,7 @@ async def send_endpoint(call_sid: str, message: str):
     session.add_message("user", message)
     response = session.generate()
 
-    return json.loads(response)
+    return {"response": response}
 
 
 @router.delete("/end")
