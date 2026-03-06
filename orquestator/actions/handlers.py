@@ -2,18 +2,18 @@ import json
 import logging
 import uuid
 from typing import Any, Dict
-from orquestator.actions.schemas import TalkData
-from orquestator.helper.twiml import end_call, gather_call
+from actions.schemas import TalkData
+from helper.twiml import end_call, gather_call
 
-from orquestator.config import CALENDAR_CLIENT, TIMEZONE
-from orquestator.services.appointment_service import (
+from config import CALENDAR_CLIENT, TIMEZONE
+from services.appointment_service import (
     get_appointment,
     list_events_by_phone_sql,
     list_events_sql,
     mark_deleted,
     upsert_appointment
 )
-from orquestator.utils.date_utils import (
+from utils.date_utils import (
     get_day_range,
     localize_datetime
 )

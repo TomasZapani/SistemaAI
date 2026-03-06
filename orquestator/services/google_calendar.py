@@ -10,7 +10,6 @@ from googleapiclient.discovery import build
 
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
-
 @dataclass
 class GoogleCalendarClient:
     service: Any
@@ -18,12 +17,12 @@ class GoogleCalendarClient:
     timezone_str: str = "UTC"
 
     @staticmethod
-    def from_env() -> "CalendarClient":
+    def from_env() -> "GoogleCalendarClient":
         calendar_id = os.getenv("GOOGLE_CALENDAR_ID")
         if not calendar_id:
             raise ValueError("Missing env var GOOGLE_CALENDAR_ID")
 
-        tz = os.getenv("GOOGLE_CALENDAR_self.timezone_str", "UTC")
+        tz = os.getenv("GOOGLE_CALENDAR_TIMEZONE", "UTC")
 
         sa_path = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE")
         sa_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
@@ -32,15 +31,13 @@ class GoogleCalendarClient:
             creds = service_account.Credentials.from_service_account_file(
                 sa_path, scopes=SCOPES
             )
-
         elif sa_json:
             creds = service_account.Credentials.from_service_account_info(
                 json.loads(sa_json), scopes=SCOPES
             )
-
         else:
             raise ValueError(
-                "Missing service account credentials."
+                "Missing service account credentials. "
                 "Set GOOGLE_SERVICE_ACCOUNT_FILE or GOOGLE_SERVICE_ACCOUNT_JSON"
             )
 
@@ -91,7 +88,10 @@ class GoogleCalendarClient:
                 "dateTime": start_rfc3339,
                 "timeZone": self.timezone_str,
             },
-            "end": {"dateTime": end_rfc3339, "timeZone": self.timezone_str},
+            "end": {
+                "dateTime": end_rfc3339,
+                "timeZone": self.timezone_str,
+            },
         }
         return (
             self.service.events()
@@ -145,6 +145,4 @@ class GoogleCalendarClient:
 
 
 def to_rfc3339(dt: datetime) -> str:
-    if dt.tzinfo is None:
-        return dt.isoformat()
     return dt.isoformat()

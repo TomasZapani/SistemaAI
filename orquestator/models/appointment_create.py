@@ -4,9 +4,8 @@ from pydantic import BaseModel
 
 
 class AppointmentCreateRequest(BaseModel):
+    client_id: str
     summary: str
-    client_name: str
-    client_phone: str
-    start_time: datetime
-    end_time: datetime
-    description: Optional[str] = ""
+    description: Optional[str] = None
+    start_time: str
+    end_time: str
