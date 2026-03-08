@@ -16,7 +16,7 @@ def load_text_file(filename: str, default: str = "") -> str:
 
 load_dotenv()
 
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 TIMEZONE = pytz.timezone(os.getenv("GOOGLE_CALENDAR_TIMEZONE", "UTC"))
 
