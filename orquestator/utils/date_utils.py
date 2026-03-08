@@ -2,10 +2,14 @@ from datetime import date, datetime, time
 import pytz
 
 
-def localize_datetime(dt: datetime, timezone: pytz.BaseTzInfo) -> datetime:
+def localize_datetime(dt: datetime | str, timezone: pytz.BaseTzInfo) -> datetime:
     """
     Asegura que un objeto datetime tenga la zona horaria correcta.
+    Acepta tanto datetime como string ISO 8601.
     """
+    if isinstance(dt, str):
+        dt = datetime.fromisoformat(dt)
+
     if dt.tzinfo is None:
         return timezone.localize(dt)
     return dt.astimezone(timezone)
@@ -40,12 +44,10 @@ def format_google_date(date_str: str | None) -> str:
     if not date_str:
         return ""
     try:
-        # Reemplaza Z (Zulu) por el offset UTC para compatibilidad
         clean_date = date_str.replace("Z", "+00:00")
         dt = datetime.fromisoformat(clean_date)
         return dt.strftime("%Y-%m-%d %H:%M:%S")
     except ValueError:
-        # Si es una fecha "todo el día" (YYYY-MM-DD), le agrega ceros
         return f"{date_str} 00:00:00"
 
 
