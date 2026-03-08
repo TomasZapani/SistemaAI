@@ -1,6 +1,6 @@
 import uuid
 from fastapi import APIRouter, HTTPException
-from orquestator.services.client_service import (
+from services.client_service import (
     search_clients,
     upsert_client,
     get_client,
