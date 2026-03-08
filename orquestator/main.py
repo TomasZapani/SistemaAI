@@ -1,15 +1,16 @@
 import os
 import uvicorn
-from orquestator.actions.registry import init_actions
+from actions.registry import init_actions
 from dotenv import load_dotenv
 from fastapi import FastAPI
-from orquestator.routes import (
+from routes import (
     answer,
     error,
     gather,
     client_route,
     appointment_route,
-    google_calendar_route
+    google_calendar_route,
+    twilio_route
 )
 
 load_dotenv()
@@ -27,6 +28,7 @@ app.include_router(error.router, prefix=API_PREFIX)
 app.include_router(client_route.router, prefix=API_PREFIX)
 app.include_router(appointment_route.router, prefix=API_PREFIX)
 app.include_router(google_calendar_route.router, prefix=API_PREFIX)
+app.include_router(twilio_route.router, prefix=API_PREFIX)
 
 if __name__ == "__main__":
     host = os.getenv("HOST", "127.0.0.1")

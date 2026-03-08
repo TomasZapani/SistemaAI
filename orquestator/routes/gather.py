@@ -2,8 +2,8 @@ from fastapi import APIRouter, Form
 from fastapi.responses import Response
 import logging
 
-from orquestator.api.session import send_message
-from orquestator.actions.registry import get_action_handler
+from api.session import send_message
+from actions.registry import get_action_handler
 
 
 router = APIRouter()
