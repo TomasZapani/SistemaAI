@@ -11,6 +11,8 @@ from routes import (
 )
 
 
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
+
 app = FastAPI()
 
 API_PREFIX = "/api/v1"
