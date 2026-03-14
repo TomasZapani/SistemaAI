@@ -1,14 +1,14 @@
 import os
-
 from twilio.twiml.voice_response import Gather, VoiceResponse
+
 
 TWILIO_VOICE = os.getenv("TWILIO_VOICE", "Polly.Mia")
 TWILIO_LANGUAGE = os.getenv("TWILIO_LANGUAGE", "es-MX")
 GATHER_ENDPOINT = os.getenv("GATHER_ENDPOINT")
+VOICE_ENDPOINT = os.getenv("VOICE_ENDPOINT")
 
 
 def end_call(message: str) -> str:
-    """Termina la llamada con un mensaje"""
     response = VoiceResponse()
     response.say(message, voice=TWILIO_VOICE, language=TWILIO_LANGUAGE)
     response.hangup()
@@ -16,7 +16,6 @@ def end_call(message: str) -> str:
 
 
 def gather_call(message: str) -> str:
-    """Dice algo y espera respuesta por voz"""
     response = VoiceResponse()
     gather = Gather(
         action=GATHER_ENDPOINT,
@@ -25,9 +24,9 @@ def gather_call(message: str) -> str:
         enhanced=True,
         speech_timeout="auto",
         profanity_filter=False,
-        barge_in=False,
         speech_model="experimental_conversations",
     )
     gather.say(message, voice=TWILIO_VOICE, language=TWILIO_LANGUAGE)
     response.append(gather)
+    response.redirect(VOICE_ENDPOINT, method="POST")  # fallback con URL completa
     return str(response)
