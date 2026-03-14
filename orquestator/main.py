@@ -13,7 +13,6 @@ from routes import (
     twilio_route
 )
 
-load_dotenv()
 
 app = FastAPI()
 
@@ -30,9 +29,10 @@ app.include_router(appointment_route.router, prefix=API_PREFIX)
 app.include_router(google_calendar_route.router, prefix=API_PREFIX)
 app.include_router(twilio_route.router, prefix=API_PREFIX)
 
+
 if __name__ == "__main__":
     host = os.getenv("HOST", "127.0.0.1")
-    port = int(os.getenv("PORT", "8000"))
+    port = int(os.getenv("PORT", "3000"))
     uvicorn.run(
         app,
         host=host,

@@ -24,9 +24,18 @@ async def webhook_gather(
 
     if not texto:
         twiml = gather_call("No te escuché bien, ¿puedes repetirlo?")
-    elif any(palabra in texto for palabra in ["adiós", "adios", "gracias", "hasta luego"]):
+
+    elif any(palabra in texto for palabra in [
+        "adiós",
+        "adios",
+        "gracias",
+        "hasta luego"
+    ]):
         twiml = end_call("Hasta luego, fue un placer ayudarte.")
+
     else:
-        twiml = gather_call(f"Dijiste: {SpeechResult}. ¿Hay algo más en que pueda ayudarte?")
+        twiml = gather_call(
+            f"Dijiste: {SpeechResult}. ¿Hay algo más en que pueda ayudarte?"
+        )
 
     return Response(content=twiml, media_type="application/xml")
