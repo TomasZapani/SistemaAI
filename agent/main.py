@@ -1,5 +1,6 @@
 from fastapi import FastAPI
-from agent.routes import router
+from routes.session_route import router
+
 
 
 app = FastAPI(title="Agent Service")

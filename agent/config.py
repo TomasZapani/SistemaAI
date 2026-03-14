@@ -2,10 +2,6 @@ import os
 
 import pytz
 from dotenv import load_dotenv
-from google import genai
-from agent.services.google_calendar import GoogleCalendarClient
-
-
 def load_text_file(filename: str, default: str = "") -> str:
     if not os.path.exists(filename):
         print(f"Warning: Missing file '{filename}'. Using default values.")
@@ -20,21 +16,15 @@ def load_text_file(filename: str, default: str = "") -> str:
 
 load_dotenv()
 
-GEMINI_CLIENT = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 TIMEZONE = pytz.timezone(os.getenv("GOOGLE_CALENDAR_TIMEZONE", "UTC"))
 
-try:
-    CALENDAR_CLIENT = GoogleCalendarClient.from_env()
-except Exception:
-    CALENDAR_CLIENT = None
 
-# Carga de instrucciones
-instruction = load_text_file(
-    "config/system_instruction.txt", "Eres un asistente útil."
+# Carga del contexto de negocio
+_base_dir = os.path.dirname(os.path.abspath(__file__))
+_config_dir = os.path.join(_base_dir, "config")
+BUSINESS_CONTEXT = load_text_file(
+    os.path.join(_config_dir, "bussines_context.txt"),
+    "Información del negocio no disponible.",
 )
-business = load_text_file(
-    "config/bussines_context.txt", "Información del negocio no disponible."
-)
-
-# Composición limpia con f-strings
-SYSTEM_CONTEXT = f"{instruction}\n\nCONTEXTO DEL NEGOCIO:\n{business}"
