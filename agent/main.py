@@ -4,7 +4,7 @@ from routes.session_route import router
 
 
 app = FastAPI(title="Agent Service")
-app.include_router(router)
+app.include_router(router, prefix="/api")
 
 
 if __name__ == "__main__":
