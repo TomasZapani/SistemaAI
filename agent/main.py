@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from agent.routes.session_route import router
+from routes.session_route import router
 
 
 
