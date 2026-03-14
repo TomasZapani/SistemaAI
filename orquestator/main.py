@@ -6,7 +6,7 @@ from routes import (
     client_route,
     appointment_route,
     google_calendar_route,
-    twilio_route
+    twilio_route,
     calendar_events_route
 )
 
