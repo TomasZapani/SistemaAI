@@ -1,6 +1,6 @@
-from orquestator.config import CALENDAR_CLIENT
+from config import CALENDAR_CLIENT
 from fastapi import APIRouter, HTTPException
-from orquestator.services.calendar_events_service import (
+from services.calendar_events_service import (
     delete_calendar_event,
     get_calendar_event,
     get_calendar_event_by_appointment_id,

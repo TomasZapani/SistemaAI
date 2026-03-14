@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from orquestator.services.google_calendar import GoogleCalendarClient
-from orquestator.models.google_calendar import (
+from services.google_calendar import GoogleCalendarClient
+from models.google_calendar import (
     GoogleCalendarCreate,
     GoogleCalendarUpdate,
 )

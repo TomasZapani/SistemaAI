@@ -1,24 +1,24 @@
 from config import CALENDAR_CLIENT, TIMEZONE
 from fastapi import APIRouter, HTTPException
-from orquestator.models import (
+from models import (
     AppointmentCreateRequest,
     AppointmentListRequest,
     AppointmentUpdateRequest
 )
-from orquestator.services.appointment_service import (
+from services.appointment_service import (
     get_appointment,
     list_events_by_phone_sql,
     list_events_sql,
     mark_deleted,
     upsert_appointment
 )
-from orquestator.services.calendar_events_service import (
+from services.calendar_events_service import (
     update_external_event_id,
     update_sync_status,
     upsert_calendar_event
 )
-from orquestator.services.client_service import get_client
-from orquestator.utils.date_utils import get_day_range, localize_datetime
+from services.client_service import get_client
+from utils.date_utils import get_day_range, localize_datetime
 
 router = APIRouter(
     prefix="/appointment",

@@ -1,6 +1,6 @@
 import ollama
 
-from agent.config import BUSINESS_CONTEXT, OLLAMA_MODEL, OLLAMA_HOST
+from config import BUSINESS_CONTEXT, OLLAMA_MODEL, OLLAMA_HOST
 
 
 class Session:
