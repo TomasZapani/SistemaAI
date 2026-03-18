@@ -12,6 +12,9 @@ from services.appointment_service import (
     mark_deleted,
     upsert_appointment
 )
+from utils.date_utils import (
+    get_day_range,
+    localize_datetime
 from services.calendar_events_service import (
     update_external_event_id,
     update_sync_status,
