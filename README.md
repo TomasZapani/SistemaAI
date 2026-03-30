@@ -1,4 +1,3 @@
-<img width="636" height="893" alt="imagen" src="https://github.com/user-attachments/assets/7414dd26-ea66-4561-9da1-96cf7558edc6" />
 # SistemaAI
 
 Asistente de voz con IA para gestión de turnos. Los clientes pueden reservar, consultar y cancelar turnos mediante una llamada telefónica, hablando en español natural.
@@ -66,3 +65,5 @@ ORCHESTRATOR_API=http://localhost:3000
 GATHER_ENDPOINT=https://<ngrok>/api/v1/twilio/webhook/gather
 VOICE_ENDPOINT=https://<ngrok>/api/v1/twilio/webhook/voice
 ```
+
+<img width="636" height="893" alt="imagen" src="https://github.com/user-attachments/assets/7414dd26-ea66-4561-9da1-96cf7558edc6" />
