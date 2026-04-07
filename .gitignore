@@ -1,0 +1,12 @@
+.env
+__pycache__/
+.venv/
+.idea/
+credentials.json
+*.db
+sistemaai-main-37a148859b1f.json
+Plan_Tests.ipynb
+.ipynb_checkpoints/
+test_calendar.py
+twilio\package.json
+twilio/node_modules/

@@ -1,0 +1,1 @@
+tengo q darle tool para q primero revise si hay turnos disponibles
